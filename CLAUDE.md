@@ -25,6 +25,15 @@ SMS-first AI agent SaaS for property management. Handles tenant communication, m
 - `npm run build:shared` — Build shared package
 - `npm run build:functions` — Build Cloud Functions
 
+## Deployment
+- **Repo:** https://github.com/irvmar/propwise
+- **Vercel project:** `propwise-ai` (single project, no duplicates)
+- **Production URL:** propwise-ai-ten.vercel.app
+- **Root directory:** `web/` (Vercel only builds the Next.js app)
+- **Production branch:** `main` (auto-deploys on push)
+- **Framework:** Next.js, build command: `next build`
+- **Backend:** Firebase Cloud Functions deployed separately via `firebase deploy --only functions`
+
 ## Conventions
 - Use TypeScript strict mode everywhere
 - Shared types live in `packages/shared`
