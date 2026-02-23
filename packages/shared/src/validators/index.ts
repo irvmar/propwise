@@ -91,3 +91,82 @@ export const sendManualSmsSchema = z.object({
   conversationId: z.string().min(1),
   body: z.string().min(1).max(1600),
 });
+
+// ─── Update Schemas ──────────────────────────────────────────────────
+
+export const updatePropertySchema = z.object({
+  propertyId: z.string().min(1),
+  name: z.string().min(1).max(200).optional(),
+  address: z.object({
+    street: z.string().min(1),
+    unit: z.string().optional(),
+    city: z.string().min(1),
+    state: z.string().length(2),
+    zip: z.string().regex(/^\d{5}(-\d{4})?$/, 'Invalid ZIP code'),
+    country: z.string().default('US'),
+  }).optional(),
+  type: z.enum(['single_family', 'multi_family', 'apartment', 'condo', 'townhouse', 'commercial']).optional(),
+});
+
+export const updateUnitSchema = z.object({
+  unitId: z.string().min(1),
+  number: z.string().min(1).max(20).optional(),
+  floor: z.number().int().optional(),
+  bedrooms: z.number().int().min(0).optional(),
+  bathrooms: z.number().min(0).optional(),
+  sqft: z.number().int().min(0).optional(),
+  rentAmount: z.number().min(0).optional(),
+  rentDueDay: z.number().int().min(1).max(28).optional(),
+});
+
+export const updateTenantSchema = z.object({
+  tenantId: z.string().min(1),
+  firstName: z.string().min(1).max(100).optional(),
+  lastName: z.string().min(1).max(100).optional(),
+  phone: phoneSchema.optional(),
+  email: emailSchema.optional(),
+  leaseStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  leaseEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  rentAmount: z.number().min(0).optional(),
+  status: z.enum(['active', 'inactive', 'past']).optional(),
+});
+
+export const updateVendorSchema = z.object({
+  vendorId: z.string().min(1),
+  name: z.string().min(1).max(200).optional(),
+  company: z.string().optional(),
+  phone: phoneSchema.optional(),
+  email: emailSchema.optional(),
+  specialties: z.array(z.enum([
+    'plumbing', 'electrical', 'hvac', 'appliance', 'structural',
+    'pest_control', 'landscaping', 'cleaning', 'painting',
+    'flooring', 'roofing', 'locksmith', 'general', 'other',
+  ])).min(1).optional(),
+  hourlyRate: z.number().min(0).optional(),
+  isPreferred: z.boolean().optional(),
+  notes: z.string().optional(),
+});
+
+export const updateKnowledgeBaseSchema = z.object({
+  entryId: z.string().min(1),
+  title: z.string().min(1).max(200).optional(),
+  content: z.string().min(1).max(10000).optional(),
+  category: z.enum([
+    'policies', 'faq', 'maintenance', 'lease',
+    'amenities', 'community', 'emergency', 'payments', 'other',
+  ]).optional(),
+  isActive: z.boolean().optional(),
+});
+
+// ─── Delete Schemas ──────────────────────────────────────────────────
+
+export const deleteEntitySchema = z.object({
+  id: z.string().min(1),
+});
+
+// ─── Conversation Archive ────────────────────────────────────────────
+
+export const archiveConversationSchema = z.object({
+  conversationId: z.string().min(1),
+  status: z.enum(['resolved', 'active']),
+});

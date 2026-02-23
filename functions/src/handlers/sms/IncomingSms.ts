@@ -5,6 +5,7 @@ import { logger } from '../../utils/logger';
 import { requireTwilioSignature } from '../../middleware/twilio.middleware';
 import { processMessage, AgentContext } from '../../agents';
 import { sendSms } from '../../services/twilio.service';
+import { getOrgPlanInfo, isWithinMessageLimit } from '../../utils/plan-enforcement';
 import {
   COLLECTIONS,
   SMS_TEMPLATES,
@@ -157,6 +158,23 @@ export const incomingSms = onRequest(async (req, res) => {
       return;
     }
 
+    // 3.5 Plan enforcement: check monthly message limit
+    const { config: planConfig } = await getOrgPlanInfo(organization.id);
+    if (!isWithinMessageLimit(organization, planConfig)) {
+      logger.warn('Monthly message limit reached', {
+        orgId: organization.id,
+        plan: organization.plan,
+        count: organization.monthlyMessageCount,
+        limit: planConfig.maxMessages,
+      });
+      await sendSms(
+        fromPhone,
+        'Your property manager\'s messaging system has reached its monthly limit. Please contact them directly for assistance.',
+      );
+      res.type('text/xml').send('<Response></Response>');
+      return;
+    }
+
     // 4. Get or create conversation
     let conversationRef: FirebaseFirestore.DocumentReference;
     const convSnap = await db
@@ -269,6 +287,11 @@ export const incomingSms = onRequest(async (req, res) => {
       createdAt: Timestamp.now() as any,
     };
     await db.collection(COLLECTIONS.messages).add(outboundMessage);
+
+    // 10.5 Increment monthly message counter
+    await db.collection(COLLECTIONS.organizations).doc(organization.id).update({
+      monthlyMessageCount: FieldValue.increment(1),
+    });
 
     // 11. Create work order if maintenance agent produced one
     if (agentResponse.workOrderData) {

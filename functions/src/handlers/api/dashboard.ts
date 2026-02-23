@@ -5,7 +5,15 @@ import { logger } from '../../utils/logger';
 import { toHttpsError } from '../../utils/errors';
 import { sendSms } from '../../services/twilio.service';
 import {
+  getOrgPlanInfo,
+  enforcePropertyLimit,
+  enforceUnitLimit,
+  enforceFeatureAccess,
+  isWithinMessageLimit,
+} from '../../utils/plan-enforcement';
+import {
   COLLECTIONS,
+  PLAN_TIERS,
   SMS_TEMPLATES,
   createOrganizationSchema,
   createPropertySchema,
@@ -15,6 +23,13 @@ import {
   createKnowledgeBaseSchema,
   updateWorkOrderSchema,
   sendManualSmsSchema,
+  updatePropertySchema,
+  updateUnitSchema,
+  updateTenantSchema,
+  updateVendorSchema,
+  updateKnowledgeBaseSchema,
+  deleteEntitySchema,
+  archiveConversationSchema,
 } from '../../shared';
 
 const Timestamp = admin.firestore.Timestamp;
@@ -84,6 +99,11 @@ export const createProperty = onCall(async (request) => {
   try {
     const input = createPropertySchema.parse(request.data);
     const orgId = await getOrgId(uid);
+
+    // Plan enforcement: check property limit
+    const { org, config } = await getOrgPlanInfo(orgId);
+    enforcePropertyLimit(org, config);
+
     const ref = db.collection(COLLECTIONS.properties).doc();
     await ref.set({
       ...input,
@@ -107,6 +127,11 @@ export const createUnit = onCall(async (request) => {
   try {
     const input = createUnitSchema.parse(request.data);
     const orgId = await getOrgId(uid);
+
+    // Plan enforcement: check unit limit
+    const { org, config } = await getOrgPlanInfo(orgId);
+    enforceUnitLimit(org, config);
+
     const ref = db.collection(COLLECTIONS.units).doc();
     await ref.set({
       ...input,
@@ -161,6 +186,11 @@ export const createVendor = onCall(async (request) => {
   try {
     const input = createVendorSchema.parse(request.data);
     const orgId = await getOrgId(uid);
+
+    // Plan enforcement: Vendor Management requires Growth plan or higher
+    const { plan } = await getOrgPlanInfo(orgId);
+    enforceFeatureAccess(plan, 'growth');
+
     const ref = db.collection(COLLECTIONS.vendors).doc();
     await ref.set({
       ...input,
@@ -244,8 +274,7 @@ export const getDashboardStats = onCall(async (request) => {
   const uid = requireAuth(request);
   try {
     const orgId = await getOrgId(uid);
-    const orgDoc = await db.collection(COLLECTIONS.organizations).doc(orgId).get();
-    const org = orgDoc.data()!;
+    const { plan, config, org } = await getOrgPlanInfo(orgId);
 
     const [activeConvs, openWorkOrders, escalated] = await Promise.all([
       db.collection(COLLECTIONS.conversations)
@@ -264,14 +293,22 @@ export const getDashboardStats = onCall(async (request) => {
     ]);
 
     return {
-      properties: org.propertyCount,
-      units: org.unitCount,
-      tenants: org.tenantCount,
+      properties: org.propertyCount || 0,
+      units: org.unitCount || 0,
+      tenants: org.tenantCount || 0,
       activeConversations: activeConvs.data().count,
       openWorkOrders: openWorkOrders.data().count,
       escalated: escalated.data().count,
-      monthlyMessages: org.monthlyMessageCount,
-      plan: org.plan,
+      monthlyMessages: org.monthlyMessageCount || 0,
+      plan,
+      planConfig: {
+        name: config.name,
+        price: config.price,
+        maxProperties: config.maxProperties,
+        maxUnits: config.maxUnits,
+        maxMessages: config.maxMessages,
+        features: config.features,
+      },
     };
   } catch (error) {
     throw toHttpsError(error);
@@ -284,6 +321,11 @@ export const createKnowledgeBaseEntry = onCall(async (request) => {
   try {
     const input = createKnowledgeBaseSchema.parse(request.data);
     const orgId = await getOrgId(uid);
+
+    // Plan enforcement: Knowledge Base requires Growth plan or higher
+    const { plan } = await getOrgPlanInfo(orgId);
+    enforceFeatureAccess(plan, 'growth');
+
     const ref = db.collection(COLLECTIONS.knowledgeBase).doc();
     await ref.set({
       ...input,
@@ -303,6 +345,15 @@ export const sendManualSms = onCall(async (request) => {
   try {
     const input = sendManualSmsSchema.parse(request.data);
     const orgId = await getOrgId(uid);
+
+    // Plan enforcement: check message limit
+    const { org, config } = await getOrgPlanInfo(orgId);
+    if (!isWithinMessageLimit(org, config)) {
+      throw new HttpsError(
+        'resource-exhausted',
+        `Monthly message limit of ${config.maxMessages} reached for your ${config.name} plan. Upgrade to send more messages.`,
+      );
+    }
 
     const convDoc = await db.collection(COLLECTIONS.conversations).doc(input.conversationId).get();
     if (!convDoc.exists || convDoc.data()?.organizationId !== orgId) {
@@ -334,6 +385,11 @@ export const sendManualSms = onCall(async (request) => {
       createdAt: Timestamp.now(),
     });
 
+    // Increment monthly message counter
+    await db.collection(COLLECTIONS.organizations).doc(orgId).update({
+      monthlyMessageCount: FieldValue.increment(1),
+    });
+
     await convDoc.ref.update({
       lastMessagePreview: input.body.substring(0, 100),
       lastMessageAt: Timestamp.now(),
@@ -342,6 +398,242 @@ export const sendManualSms = onCall(async (request) => {
     });
 
     return { success: true, sid };
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+// ─── Update Property ──────────────────────────────────────────────────
+export const updateProperty = onCall(async (request) => {
+  const uid = requireAuth(request);
+  try {
+    const input = updatePropertySchema.parse(request.data);
+    const orgId = await getOrgId(uid);
+    const { propertyId, ...updates } = input;
+    const ref = db.collection(COLLECTIONS.properties).doc(propertyId);
+    const doc = await ref.get();
+    if (!doc.exists || doc.data()?.organizationId !== orgId) {
+      throw new HttpsError('not-found', 'Property not found');
+    }
+    await ref.update({ ...updates, updatedAt: Timestamp.now() });
+    return { success: true };
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+// ─── Delete Property ──────────────────────────────────────────────────
+export const deleteProperty = onCall(async (request) => {
+  const uid = requireAuth(request);
+  try {
+    const { id } = deleteEntitySchema.parse(request.data);
+    const orgId = await getOrgId(uid);
+    const ref = db.collection(COLLECTIONS.properties).doc(id);
+    const doc = await ref.get();
+    if (!doc.exists || doc.data()?.organizationId !== orgId) {
+      throw new HttpsError('not-found', 'Property not found');
+    }
+    // Check for units
+    const unitsSnap = await db.collection(COLLECTIONS.units).where('propertyId', '==', id).limit(1).get();
+    if (!unitsSnap.empty) {
+      throw new HttpsError('failed-precondition', 'Cannot delete property with existing units. Remove units first.');
+    }
+    await ref.delete();
+    await db.collection(COLLECTIONS.organizations).doc(orgId).update({
+      propertyCount: FieldValue.increment(-1),
+    });
+    return { success: true };
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+// ─── Update Unit ──────────────────────────────────────────────────────
+export const updateUnit = onCall(async (request) => {
+  const uid = requireAuth(request);
+  try {
+    const input = updateUnitSchema.parse(request.data);
+    const orgId = await getOrgId(uid);
+    const { unitId, ...updates } = input;
+    const ref = db.collection(COLLECTIONS.units).doc(unitId);
+    const doc = await ref.get();
+    if (!doc.exists || doc.data()?.organizationId !== orgId) {
+      throw new HttpsError('not-found', 'Unit not found');
+    }
+    await ref.update({ ...updates, updatedAt: Timestamp.now() });
+    return { success: true };
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+// ─── Delete Unit ──────────────────────────────────────────────────────
+export const deleteUnit = onCall(async (request) => {
+  const uid = requireAuth(request);
+  try {
+    const { id } = deleteEntitySchema.parse(request.data);
+    const orgId = await getOrgId(uid);
+    const ref = db.collection(COLLECTIONS.units).doc(id);
+    const doc = await ref.get();
+    if (!doc.exists || doc.data()?.organizationId !== orgId) {
+      throw new HttpsError('not-found', 'Unit not found');
+    }
+    const unitData = doc.data()!;
+    if (unitData.currentTenantId) {
+      throw new HttpsError('failed-precondition', 'Cannot delete unit with an active tenant.');
+    }
+    await ref.delete();
+    await db.collection(COLLECTIONS.properties).doc(unitData.propertyId).update({
+      unitCount: FieldValue.increment(-1),
+    });
+    await db.collection(COLLECTIONS.organizations).doc(orgId).update({
+      unitCount: FieldValue.increment(-1),
+    });
+    return { success: true };
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+// ─── Update Tenant ────────────────────────────────────────────────────
+export const updateTenant = onCall(async (request) => {
+  const uid = requireAuth(request);
+  try {
+    const input = updateTenantSchema.parse(request.data);
+    const orgId = await getOrgId(uid);
+    const { tenantId, ...updates } = input;
+    const ref = db.collection(COLLECTIONS.tenants).doc(tenantId);
+    const doc = await ref.get();
+    if (!doc.exists || doc.data()?.organizationId !== orgId) {
+      throw new HttpsError('not-found', 'Tenant not found');
+    }
+    await ref.update({ ...updates, updatedAt: Timestamp.now() });
+    return { success: true };
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+// ─── Delete Tenant ────────────────────────────────────────────────────
+export const deleteTenant = onCall(async (request) => {
+  const uid = requireAuth(request);
+  try {
+    const { id } = deleteEntitySchema.parse(request.data);
+    const orgId = await getOrgId(uid);
+    const ref = db.collection(COLLECTIONS.tenants).doc(id);
+    const doc = await ref.get();
+    if (!doc.exists || doc.data()?.organizationId !== orgId) {
+      throw new HttpsError('not-found', 'Tenant not found');
+    }
+    const tenantData = doc.data()!;
+    await ref.delete();
+    // Clear unit's tenant reference
+    if (tenantData.unitId) {
+      await db.collection(COLLECTIONS.units).doc(tenantData.unitId).update({
+        currentTenantId: FieldValue.delete(),
+        status: 'vacant',
+      });
+    }
+    await db.collection(COLLECTIONS.organizations).doc(orgId).update({
+      tenantCount: FieldValue.increment(-1),
+    });
+    return { success: true };
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+// ─── Update Vendor ────────────────────────────────────────────────────
+export const updateVendor = onCall(async (request) => {
+  const uid = requireAuth(request);
+  try {
+    const input = updateVendorSchema.parse(request.data);
+    const orgId = await getOrgId(uid);
+    const { vendorId, ...updates } = input;
+    const ref = db.collection(COLLECTIONS.vendors).doc(vendorId);
+    const doc = await ref.get();
+    if (!doc.exists || doc.data()?.organizationId !== orgId) {
+      throw new HttpsError('not-found', 'Vendor not found');
+    }
+    await ref.update({ ...updates, updatedAt: Timestamp.now() });
+    return { success: true };
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+// ─── Delete Vendor ────────────────────────────────────────────────────
+export const deleteVendor = onCall(async (request) => {
+  const uid = requireAuth(request);
+  try {
+    const { id } = deleteEntitySchema.parse(request.data);
+    const orgId = await getOrgId(uid);
+    const ref = db.collection(COLLECTIONS.vendors).doc(id);
+    const doc = await ref.get();
+    if (!doc.exists || doc.data()?.organizationId !== orgId) {
+      throw new HttpsError('not-found', 'Vendor not found');
+    }
+    await ref.delete();
+    return { success: true };
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+// ─── Update Knowledge Base Entry ──────────────────────────────────────
+export const updateKnowledgeBaseEntry = onCall(async (request) => {
+  const uid = requireAuth(request);
+  try {
+    const input = updateKnowledgeBaseSchema.parse(request.data);
+    const orgId = await getOrgId(uid);
+    const { entryId, ...updates } = input;
+    const ref = db.collection(COLLECTIONS.knowledgeBase).doc(entryId);
+    const doc = await ref.get();
+    if (!doc.exists || doc.data()?.organizationId !== orgId) {
+      throw new HttpsError('not-found', 'Knowledge base entry not found');
+    }
+    await ref.update({ ...updates, updatedAt: Timestamp.now() });
+    return { success: true };
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+// ─── Delete Knowledge Base Entry ──────────────────────────────────────
+export const deleteKnowledgeBaseEntry = onCall(async (request) => {
+  const uid = requireAuth(request);
+  try {
+    const { id } = deleteEntitySchema.parse(request.data);
+    const orgId = await getOrgId(uid);
+    const ref = db.collection(COLLECTIONS.knowledgeBase).doc(id);
+    const doc = await ref.get();
+    if (!doc.exists || doc.data()?.organizationId !== orgId) {
+      throw new HttpsError('not-found', 'Knowledge base entry not found');
+    }
+    await ref.delete();
+    return { success: true };
+  } catch (error) {
+    throw toHttpsError(error);
+  }
+});
+
+// ─── Archive Conversation ─────────────────────────────────────────────
+export const archiveConversation = onCall(async (request) => {
+  const uid = requireAuth(request);
+  try {
+    const input = archiveConversationSchema.parse(request.data);
+    const orgId = await getOrgId(uid);
+    const ref = db.collection(COLLECTIONS.conversations).doc(input.conversationId);
+    const doc = await ref.get();
+    if (!doc.exists || doc.data()?.organizationId !== orgId) {
+      throw new HttpsError('not-found', 'Conversation not found');
+    }
+    await ref.update({
+      status: input.status,
+      isEscalated: false,
+      updatedAt: Timestamp.now(),
+    });
+    return { success: true };
   } catch (error) {
     throw toHttpsError(error);
   }

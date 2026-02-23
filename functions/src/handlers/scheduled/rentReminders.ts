@@ -2,7 +2,7 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { db } from '../../utils/firebase';
 import { logger } from '../../utils/logger';
 import { sendSms } from '../../services/twilio.service';
-import { COLLECTIONS, SMS_TEMPLATES, Tenant, Organization, Unit } from '../../shared';
+import { COLLECTIONS, PLAN_ORDER, SMS_TEMPLATES, Tenant, Organization, Unit, PlanTier } from '../../shared';
 
 export const rentReminders = onSchedule(
   { schedule: '0 10 * * *', timeZone: 'America/New_York' },
@@ -16,6 +16,15 @@ export const rentReminders = onSchedule(
 
     for (const orgDoc of orgsSnap.docs) {
       const org = { id: orgDoc.id, ...orgDoc.data() } as Organization;
+
+      // Plan enforcement: Rent Reminders requires Growth plan or higher
+      const planIndex = PLAN_ORDER.indexOf(org.plan as PlanTier);
+      const growthIndex = PLAN_ORDER.indexOf('growth');
+      if (planIndex < growthIndex) {
+        logger.info('Skipping rent reminders for org on Free plan', { orgId: org.id });
+        continue;
+      }
+
       const reminderDays = org.settings.rentReminderDaysBefore;
 
       const tenantsSnap = await db

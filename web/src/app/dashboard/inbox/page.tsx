@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface Conversation {
   id: string;
@@ -61,13 +62,12 @@ export default function InboxPage() {
   const [showThread, setShowThread] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { call: sendSms, loading: sending } = useCallable('sendManualSms');
+  const { call: callArchive, loading: archiving } = useCallable('archiveConversation');
 
-  // Filter & sort state
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('recent');
 
-  // Real-time conversations
   useEffect(() => {
     if (!profile?.organizationId) return;
     const q = query(
@@ -80,7 +80,6 @@ export default function InboxPage() {
     });
   }, [profile?.organizationId]);
 
-  // Real-time messages for selected conversation
   useEffect(() => {
     if (!selectedConv) return;
     const q = query(
@@ -94,11 +93,9 @@ export default function InboxPage() {
     });
   }, [selectedConv]);
 
-  // Filtered and sorted conversations
   const filteredConversations = useMemo(() => {
     let result = [...conversations];
 
-    // Search filter
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
@@ -110,7 +107,6 @@ export default function InboxPage() {
       );
     }
 
-    // Status filter
     if (statusFilter !== 'all') {
       if (statusFilter === 'escalated') {
         result = result.filter((conv) => conv.isEscalated);
@@ -119,32 +115,19 @@ export default function InboxPage() {
       }
     }
 
-    // Sort
     switch (sortBy) {
       case 'oldest':
-        result.sort((a, b) => {
-          const aTime = a.lastMessageAt?.toDate?.()?.getTime() ?? 0;
-          const bTime = b.lastMessageAt?.toDate?.()?.getTime() ?? 0;
-          return aTime - bTime;
-        });
+        result.sort((a, b) => (a.lastMessageAt?.toDate?.()?.getTime() ?? 0) - (b.lastMessageAt?.toDate?.()?.getTime() ?? 0));
         break;
       case 'unread':
         result.sort((a, b) => {
           if (a.unreadCount > 0 && b.unreadCount === 0) return -1;
           if (a.unreadCount === 0 && b.unreadCount > 0) return 1;
-          const aTime = a.lastMessageAt?.toDate?.()?.getTime() ?? 0;
-          const bTime = b.lastMessageAt?.toDate?.()?.getTime() ?? 0;
-          return bTime - aTime;
+          return (b.lastMessageAt?.toDate?.()?.getTime() ?? 0) - (a.lastMessageAt?.toDate?.()?.getTime() ?? 0);
         });
         break;
-      case 'recent':
       default:
-        result.sort((a, b) => {
-          const aTime = a.lastMessageAt?.toDate?.()?.getTime() ?? 0;
-          const bTime = b.lastMessageAt?.toDate?.()?.getTime() ?? 0;
-          return bTime - aTime;
-        });
-        break;
+        result.sort((a, b) => (b.lastMessageAt?.toDate?.()?.getTime() ?? 0) - (a.lastMessageAt?.toDate?.()?.getTime() ?? 0));
     }
 
     return result;
@@ -152,8 +135,18 @@ export default function InboxPage() {
 
   const handleSend = async () => {
     if (!reply.trim() || !selectedConv) return;
-    await sendSms({ conversationId: selectedConv, body: reply });
-    setReply('');
+    const result = await sendSms({ conversationId: selectedConv, body: reply });
+    if (result) {
+      setReply('');
+      toast.success('Message sent');
+    }
+  };
+
+  const handleArchive = async (convId: string, newStatus: 'resolved' | 'active') => {
+    const result = await callArchive({ conversationId: convId, status: newStatus });
+    if (result) {
+      toast.success(newStatus === 'resolved' ? 'Conversation resolved' : 'Conversation reopened');
+    }
   };
 
   const handleSelectConversation = (convId: string) => {
@@ -191,43 +184,19 @@ export default function InboxPage() {
           'w-full md:w-80 md:shrink-0 flex flex-col border-[var(--pw-border)]',
           showThread ? 'hidden md:flex' : 'flex',
         )}>
-          {/* Filter bar */}
           <div className="p-3 border-b border-[var(--pw-border)] space-y-2">
-            <Input
-              placeholder="Search name, phone, message..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="h-8 text-sm"
-            />
+            <Input placeholder="Search name, phone, message..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="h-8 text-sm" />
             <div className="flex gap-2">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-8 text-xs flex-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {statusOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
+                <SelectTrigger className="h-8 text-xs flex-1"><SelectValue /></SelectTrigger>
+                <SelectContent>{statusOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
               </Select>
               <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="h-8 text-xs flex-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {sortOptions.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
+                <SelectTrigger className="h-8 text-xs flex-1"><SelectValue /></SelectTrigger>
+                <SelectContent>{sortOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <p className="text-[11px] text-[var(--pw-slate)]">
-              Showing {filteredConversations.length} of {conversations.length}
-            </p>
+            <p className="text-[11px] text-[var(--pw-slate)]">Showing {filteredConversations.length} of {conversations.length}</p>
           </div>
           <ScrollArea className="flex-1">
             {filteredConversations.map((conv) => (
@@ -241,45 +210,27 @@ export default function InboxPage() {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span
-                      className={cn('w-2 h-2 rounded-full shrink-0', getStatusDot(conv))}
-                      title={
-                        conv.isEscalated
-                          ? 'Escalated'
-                          : conv.unreadCount > 0
-                          ? 'Unread'
-                          : conv.status
-                      }
-                    />
+                    <span className={cn('w-2 h-2 rounded-full shrink-0', getStatusDot(conv))} />
                     <span className="font-medium text-sm text-[var(--pw-ink)]">{conv.tenantName}</span>
                   </div>
                   <span className="text-xs text-[var(--pw-slate)]">{formatTime(conv.lastMessageAt)}</span>
                 </div>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-xs text-[var(--pw-slate)]">Unit {conv.unitNumber}</span>
-                  {conv.isEscalated && (
-                    <Badge variant="destructive" className="text-[10px] px-1 py-0">
-                      Escalated
-                    </Badge>
-                  )}
+                  {conv.isEscalated && <Badge variant="destructive" className="text-[10px] px-1 py-0">Escalated</Badge>}
+                  {conv.status === 'resolved' && <Badge variant="outline" className="text-[10px] px-1 py-0 border-[var(--pw-border)]">Resolved</Badge>}
                   {conv.unreadCount > 0 && (
-                    <span className="ml-auto bg-[var(--pw-accent)] text-white text-[10px] px-1.5 py-0.5 rounded-full">
-                      {conv.unreadCount}
-                    </span>
+                    <span className="ml-auto bg-[var(--pw-accent)] text-white text-[10px] px-1.5 py-0.5 rounded-full">{conv.unreadCount}</span>
                   )}
                 </div>
                 <p className="text-xs text-[var(--pw-slate)] mt-1 truncate">{conv.lastMessagePreview}</p>
               </button>
             ))}
             {filteredConversations.length === 0 && conversations.length > 0 && (
-              <div className="p-8 text-center text-[var(--pw-slate)] text-sm">
-                No conversations match your filters.
-              </div>
+              <div className="p-8 text-center text-[var(--pw-slate)] text-sm">No conversations match your filters.</div>
             )}
             {conversations.length === 0 && (
-              <div className="p-8 text-center text-[var(--pw-slate)] text-sm">
-                No conversations yet. They&apos;ll appear when tenants text in.
-              </div>
+              <div className="p-8 text-center text-[var(--pw-slate)] text-sm">No conversations yet. They&apos;ll appear when tenants text in.</div>
             )}
           </ScrollArea>
         </Card>
@@ -291,54 +242,42 @@ export default function InboxPage() {
         )}>
           {selectedConv ? (
             <>
-              {/* Header */}
               <div className="p-4 border-b border-[var(--pw-border)]">
                 {(() => {
                   const conv = conversations.find((c) => c.id === selectedConv);
                   return conv ? (
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        {/* Back button on mobile */}
-                        <button
-                          onClick={handleBackToList}
-                          className="md:hidden p-1 -ml-1 rounded-lg hover:bg-[var(--pw-warm)] transition-colors"
-                          aria-label="Back to conversations"
-                        >
-                          <svg className="w-5 h-5 text-[var(--pw-ink)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" />
-                          </svg>
+                        <button onClick={handleBackToList} className="md:hidden p-1 -ml-1 rounded-lg hover:bg-[var(--pw-warm)] transition-colors" aria-label="Back">
+                          <svg className="w-5 h-5 text-[var(--pw-ink)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 19l-7-7 7-7" /></svg>
                         </button>
                         <div>
                           <h2 className="font-semibold text-[var(--pw-ink)]">{conv.tenantName}</h2>
-                          <p className="text-sm text-[var(--pw-slate)]">
-                            {conv.tenantPhone} &middot; Unit {conv.unitNumber}
-                          </p>
+                          <p className="text-sm text-[var(--pw-slate)]">{conv.tenantPhone} &middot; Unit {conv.unitNumber}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        {conv.isEscalated && (
-                          <Badge variant="destructive">Escalated</Badge>
-                        )}
+                        {conv.isEscalated && <Badge variant="destructive">Escalated</Badge>}
                         {conv.status && !conv.isEscalated && (
-                          <Badge
-                            className={
-                              conv.status === 'active'
-                                ? 'bg-[var(--pw-sage-soft)] text-[var(--pw-sage)]'
-                                : conv.status === 'resolved'
-                                ? 'bg-[var(--pw-warm)] text-[var(--pw-slate)]'
-                                : ''
-                            }
-                          >
+                          <Badge className={conv.status === 'active' ? 'bg-[var(--pw-sage-soft)] text-[var(--pw-sage)]' : conv.status === 'resolved' ? 'bg-[var(--pw-warm)] text-[var(--pw-slate)]' : ''}>
                             {conv.status}
                           </Badge>
                         )}
+                        {conv.status === 'active' || conv.isEscalated ? (
+                          <Button size="sm" variant="outline" className="border-[var(--pw-border)] text-xs" onClick={() => handleArchive(conv.id, 'resolved')} disabled={archiving}>
+                            {archiving ? '...' : 'Resolve'}
+                          </Button>
+                        ) : conv.status === 'resolved' ? (
+                          <Button size="sm" variant="outline" className="border-[var(--pw-border)] text-xs" onClick={() => handleArchive(conv.id, 'active')} disabled={archiving}>
+                            {archiving ? '...' : 'Reopen'}
+                          </Button>
+                        ) : null}
                       </div>
                     </div>
                   ) : null;
                 })()}
               </div>
 
-              {/* Messages */}
               <ScrollArea className="flex-1 p-4">
                 <div className="space-y-3">
                   {messages.map((msg) => (
@@ -352,18 +291,10 @@ export default function InboxPage() {
                       )}
                     >
                       <p>{msg.body}</p>
-                      <div
-                        className={cn(
-                          'text-[10px] mt-1 flex items-center gap-2',
-                          msg.direction === 'inbound' ? 'text-[var(--pw-slate)]' : 'text-white/70',
-                        )}
-                      >
+                      <div className={cn('text-[10px] mt-1 flex items-center gap-2', msg.direction === 'inbound' ? 'text-[var(--pw-slate)]' : 'text-white/70')}>
                         <span>{formatTime(msg.createdAt)}</span>
                         {msg.sender === 'ai' && (
-                          <span className={cn(
-                            'px-1 py-0.5 rounded text-[9px] font-medium',
-                            msg.direction === 'inbound' ? 'bg-[var(--pw-sage-soft)] text-[var(--pw-sage)]' : 'bg-white/20 text-white'
-                          )}>AI</span>
+                          <span className={cn('px-1 py-0.5 rounded text-[9px] font-medium', msg.direction === 'inbound' ? 'bg-[var(--pw-sage-soft)] text-[var(--pw-sage)]' : 'bg-white/20 text-white')}>AI</span>
                         )}
                         {msg.intent && <span>{msg.intent}</span>}
                       </div>
@@ -373,7 +304,6 @@ export default function InboxPage() {
                 </div>
               </ScrollArea>
 
-              {/* Reply box */}
               <div className="p-3 md:p-4 border-t border-[var(--pw-border)]">
                 <div className="flex gap-2">
                   <Textarea
@@ -382,12 +312,7 @@ export default function InboxPage() {
                     placeholder="Type a reply..."
                     className="resize-none text-sm"
                     rows={2}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSend();
-                      }
-                    }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
                   />
                   <Button onClick={handleSend} disabled={sending || !reply.trim()} className="self-end">
                     {sending ? '...' : 'Send'}

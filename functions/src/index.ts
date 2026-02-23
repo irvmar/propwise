@@ -13,6 +13,17 @@ export {
   getDashboardStats,
   createKnowledgeBaseEntry,
   sendManualSms,
+  updateProperty,
+  deleteProperty,
+  updateUnit,
+  deleteUnit,
+  updateTenant,
+  deleteTenant,
+  updateVendor,
+  deleteVendor,
+  updateKnowledgeBaseEntry,
+  deleteKnowledgeBaseEntry,
+  archiveConversation,
 } from './handlers/api/dashboard';
 
 // Billing API
@@ -27,6 +38,7 @@ export { stripeWebhook } from './handlers/stripe/stripeWebhook';
 // Scheduled Functions
 export { rentReminders } from './handlers/scheduled/rentReminders';
 export { followUpWorkOrders } from './handlers/scheduled/followUpWorkOrders';
+export { resetMonthlyCounters } from './handlers/scheduled/resetMonthlyCounters';
 
 // Firestore Triggers
 export { onWorkOrderCreated } from './handlers/scheduled/onWorkOrderCreated';

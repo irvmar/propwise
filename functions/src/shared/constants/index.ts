@@ -30,21 +30,21 @@ export const DEFAULT_EMERGENCY_KEYWORDS = [
 
 export const PLAN_TIERS: Record<PlanTier, PlanConfig> = {
   starter: {
-    name: 'Starter',
+    name: 'Free',
     price: 0,
-    maxProperties: 2,
-    maxUnits: 10,
+    maxProperties: 1,
+    maxUnits: 5,
     maxMessages: 50,
-    features: ['AI SMS Agent', 'Work Order Management', 'Basic Dashboard', 'Email Support'],
+    features: ['AI SMS Agent', 'Work Order Tracking', 'Basic Dashboard', 'Email Support'],
   },
   growth: {
     name: 'Growth',
     price: 99,
-    maxProperties: 5,
-    maxUnits: 25,
+    maxProperties: 3,
+    maxUnits: 50,
     maxMessages: 500,
     features: [
-      'Everything in Starter',
+      'Everything in Free',
       'Knowledge Base',
       'Vendor Management',
       'Rent Reminders',
@@ -54,26 +54,24 @@ export const PLAN_TIERS: Record<PlanTier, PlanConfig> = {
   professional: {
     name: 'Professional',
     price: 199,
-    maxProperties: 20,
-    maxUnits: 100,
+    maxProperties: 10,
+    maxUnits: 150,
     maxMessages: 2000,
     features: [
       'Everything in Growth',
-      'Custom AI Training',
+      'Maintenance Coordination',
       'Advanced Analytics',
-      'Priority Support',
     ],
   },
   enterprise: {
     name: 'Enterprise',
     price: 349,
     maxProperties: -1, // unlimited
-    maxUnits: -1,
-    maxMessages: -1,
+    maxUnits: 500,
+    maxMessages: 5000,
     features: [
       'Everything in Professional',
       'Unlimited Properties',
-      'Unlimited Messages',
       'API Access',
       'Dedicated Account Manager',
       'Custom Integrations',
@@ -94,6 +92,9 @@ export const PLAN_TO_STRIPE_PRICE: Partial<Record<PlanTier, string>> = {
   professional: 'price_professional_monthly',
   enterprise: 'price_enterprise_monthly',
 };
+
+// Plan ordering for feature-gate comparisons (higher index = more features)
+export const PLAN_ORDER: PlanTier[] = ['starter', 'growth', 'professional', 'enterprise'];
 
 export interface PlanConfig {
   name: string;

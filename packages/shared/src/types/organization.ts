@@ -48,7 +48,7 @@ export interface DaySchedule {
   end: string;   // "17:00"
 }
 
-export type PlanTier = 'starter' | 'professional' | 'enterprise';
+export type PlanTier = 'starter' | 'growth' | 'professional' | 'enterprise';
 
 export type FirebaseTimestamp = {
   _seconds: number;

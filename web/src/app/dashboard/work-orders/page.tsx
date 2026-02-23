@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 
 interface WorkOrder {
   id: string;
@@ -21,9 +22,17 @@ interface WorkOrder {
   status: string;
   tenantId: string;
   tenantName?: string;
+  vendorId?: string;
   source: string;
   createdAt: any;
   notes: Array<{ body: string; authorName: string; createdAt: any }>;
+}
+
+interface Vendor {
+  id: string;
+  name: string;
+  specialties: string[];
+  isPreferred: boolean;
 }
 
 const priorityColors: Record<string, string> = {
@@ -43,10 +52,7 @@ const statusColors: Record<string, string> = {
 };
 
 const priorityOrder: Record<string, number> = {
-  emergency: 0,
-  high: 1,
-  medium: 2,
-  low: 3,
+  emergency: 0, high: 1, medium: 2, low: 3,
 };
 
 const statusFilterOptions = [
@@ -88,11 +94,11 @@ export default function WorkOrdersPage() {
   const { data: workOrders, loading } = useCollection<WorkOrder>('workOrders', [
     orderBy('createdAt', 'desc'),
   ]);
+  const { data: vendors } = useCollection<Vendor>('vendors');
   const { call: updateWorkOrder } = useCallable('updateWorkOrder');
   const [selectedWo, setSelectedWo] = useState<WorkOrder | null>(null);
   const [note, setNote] = useState('');
 
-  // Filter & sort state
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
@@ -100,16 +106,39 @@ export default function WorkOrdersPage() {
   const [sortBy, setSortBy] = useState('newest');
 
   const handleStatusChange = async (workOrderId: string, status: string) => {
-    await updateWorkOrder({ workOrderId, status });
+    const result = await updateWorkOrder({ workOrderId, status });
+    if (result) toast.success(`Status updated to ${status.replace('_', ' ')}`);
+  };
+
+  const handleVendorAssign = async (workOrderId: string, vendorId: string) => {
+    const vendor = vendors.find((v) => v.id === vendorId);
+    const result = await updateWorkOrder({
+      workOrderId,
+      vendorId,
+      status: 'assigned',
+      assignedTo: vendor?.name,
+    });
+    if (result) toast.success(`Assigned to ${vendor?.name ?? 'vendor'}`);
   };
 
   const handleAddNote = async () => {
     if (!selectedWo || !note.trim()) return;
-    await updateWorkOrder({ workOrderId: selectedWo.id, note });
-    setNote('');
+    const result = await updateWorkOrder({ workOrderId: selectedWo.id, note });
+    if (result) {
+      setNote('');
+      toast.success('Note added');
+    }
   };
 
-  // Filtered and sorted work orders
+  const getVendorName = (vendorId?: string) => {
+    if (!vendorId) return null;
+    return vendors.find((v) => v.id === vendorId)?.name ?? null;
+  };
+
+  const getMatchingVendors = (category: string) => {
+    return vendors.filter((v) => v.specialties.includes(category) || v.specialties.includes('general'));
+  };
+
   const filteredWorkOrders = useMemo(() => {
     let result = [...workOrders];
 
@@ -124,44 +153,23 @@ export default function WorkOrdersPage() {
       );
     }
 
-    if (statusFilter !== 'all') {
-      result = result.filter((wo) => wo.status === statusFilter);
-    }
-
-    if (priorityFilter !== 'all') {
-      result = result.filter((wo) => wo.priority === priorityFilter);
-    }
-
-    if (categoryFilter !== 'all') {
-      result = result.filter((wo) => wo.category === categoryFilter);
-    }
+    if (statusFilter !== 'all') result = result.filter((wo) => wo.status === statusFilter);
+    if (priorityFilter !== 'all') result = result.filter((wo) => wo.priority === priorityFilter);
+    if (categoryFilter !== 'all') result = result.filter((wo) => wo.category === categoryFilter);
 
     switch (sortBy) {
       case 'oldest':
-        result.sort((a, b) => {
-          const aTime = a.createdAt?.toDate?.()?.getTime() ?? 0;
-          const bTime = b.createdAt?.toDate?.()?.getTime() ?? 0;
-          return aTime - bTime;
-        });
+        result.sort((a, b) => (a.createdAt?.toDate?.()?.getTime() ?? 0) - (b.createdAt?.toDate?.()?.getTime() ?? 0));
         break;
       case 'priority':
         result.sort((a, b) => {
-          const aPri = priorityOrder[a.priority] ?? 99;
-          const bPri = priorityOrder[b.priority] ?? 99;
-          if (aPri !== bPri) return aPri - bPri;
-          const aTime = a.createdAt?.toDate?.()?.getTime() ?? 0;
-          const bTime = b.createdAt?.toDate?.()?.getTime() ?? 0;
-          return bTime - aTime;
+          const diff = (priorityOrder[a.priority] ?? 99) - (priorityOrder[b.priority] ?? 99);
+          if (diff !== 0) return diff;
+          return (b.createdAt?.toDate?.()?.getTime() ?? 0) - (a.createdAt?.toDate?.()?.getTime() ?? 0);
         });
         break;
-      case 'newest':
       default:
-        result.sort((a, b) => {
-          const aTime = a.createdAt?.toDate?.()?.getTime() ?? 0;
-          const bTime = b.createdAt?.toDate?.()?.getTime() ?? 0;
-          return bTime - aTime;
-        });
-        break;
+        result.sort((a, b) => (b.createdAt?.toDate?.()?.getTime() ?? 0) - (a.createdAt?.toDate?.()?.getTime() ?? 0));
     }
 
     return result;
@@ -169,7 +177,6 @@ export default function WorkOrdersPage() {
 
   const openOrders = workOrders.filter((wo) => !['completed', 'cancelled'].includes(wo.status));
   const closedOrders = workOrders.filter((wo) => ['completed', 'cancelled'].includes(wo.status));
-
   const hasActiveFilters = searchQuery || statusFilter !== 'all' || priorityFilter !== 'all' || categoryFilter !== 'all';
 
   return (
@@ -184,70 +191,28 @@ export default function WorkOrdersPage() {
       {/* Filter bar */}
       <div className="mb-4 md:mb-6 space-y-3">
         <div className="flex flex-col sm:flex-row gap-3">
-          <Input
-            placeholder="Search title, description, notes..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="sm:max-w-xs"
-          />
+          <Input placeholder="Search title, description, notes..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="sm:max-w-xs" />
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="sm:w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {statusFilterOptions.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-              ))}
-            </SelectContent>
+            <SelectTrigger className="sm:w-40"><SelectValue /></SelectTrigger>
+            <SelectContent>{statusFilterOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-            <SelectTrigger className="sm:w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {priorityFilterOptions.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-              ))}
-            </SelectContent>
+            <SelectTrigger className="sm:w-40"><SelectValue /></SelectTrigger>
+            <SelectContent>{priorityFilterOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="sm:w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {categoryFilterOptions.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-              ))}
-            </SelectContent>
+            <SelectTrigger className="sm:w-40"><SelectValue /></SelectTrigger>
+            <SelectContent>{categoryFilterOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
           </Select>
           <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="sm:w-52">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {sortOptions.map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-              ))}
-            </SelectContent>
+            <SelectTrigger className="sm:w-52"><SelectValue /></SelectTrigger>
+            <SelectContent>{sortOptions.map((opt) => <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>)}</SelectContent>
           </Select>
         </div>
         {hasActiveFilters && (
           <div className="flex items-center gap-2">
-            <p className="text-sm text-[var(--pw-slate)]">
-              Showing {filteredWorkOrders.length} of {workOrders.length} work orders
-            </p>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs h-7"
-              onClick={() => {
-                setSearchQuery('');
-                setStatusFilter('all');
-                setPriorityFilter('all');
-                setCategoryFilter('all');
-                setSortBy('newest');
-              }}
-            >
+            <p className="text-sm text-[var(--pw-slate)]">Showing {filteredWorkOrders.length} of {workOrders.length} work orders</p>
+            <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => { setSearchQuery(''); setStatusFilter('all'); setPriorityFilter('all'); setCategoryFilter('all'); setSortBy('newest'); }}>
               Clear filters
             </Button>
           </div>
@@ -262,79 +227,105 @@ export default function WorkOrdersPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {filteredWorkOrders.map((wo) => (
-            <Card key={wo.id} className="border-[var(--pw-border)] shadow-[0_2px_8px_rgba(26,23,20,0.04)]">
-              <CardContent className="pt-6">
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1 flex-wrap">
-                      <h3 className="font-semibold text-[var(--pw-ink)]">{wo.title}</h3>
-                      <Badge className={priorityColors[wo.priority]}>{wo.priority}</Badge>
-                      <Badge className={statusColors[wo.status]}>{wo.status.replace('_', ' ')}</Badge>
-                      <Badge variant="outline" className="border-[var(--pw-border)]">{wo.category}</Badge>
+          {filteredWorkOrders.map((wo) => {
+            const matching = getMatchingVendors(wo.category);
+            const vendorName = getVendorName(wo.vendorId);
+            return (
+              <Card key={wo.id} className="border-[var(--pw-border)] shadow-[0_2px_8px_rgba(26,23,20,0.04)]">
+                <CardContent className="pt-6">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <h3 className="font-semibold text-[var(--pw-ink)]">{wo.title}</h3>
+                        <Badge className={priorityColors[wo.priority]}>{wo.priority}</Badge>
+                        <Badge className={statusColors[wo.status]}>{wo.status.replace('_', ' ')}</Badge>
+                        <Badge variant="outline" className="border-[var(--pw-border)]">{wo.category}</Badge>
+                      </div>
+                      <p className="text-sm text-[var(--pw-slate)]">{wo.description}</p>
+                      {vendorName && (
+                        <p className="text-sm text-[var(--pw-accent)] mt-1 font-medium">Assigned to: {vendorName}</p>
+                      )}
+                      <p className="text-xs text-[var(--pw-slate)]/70 mt-2">
+                        Source: {wo.source} &middot; Created: {wo.createdAt?.toDate?.()?.toLocaleDateString() ?? 'N/A'}
+                      </p>
                     </div>
-                    <p className="text-sm text-[var(--pw-slate)]">{wo.description}</p>
-                    <p className="text-xs text-[var(--pw-slate)]/70 mt-2">
-                      Source: {wo.source} &middot; Created: {wo.createdAt?.toDate?.()?.toLocaleDateString() ?? 'N/A'}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <Select value={wo.status} onValueChange={(v) => handleStatusChange(wo.id, v)}>
-                      <SelectTrigger className="w-full sm:w-36">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {['new', 'assigned', 'scheduled', 'in_progress', 'pending_parts', 'completed', 'cancelled'].map((s) => (
-                          <SelectItem key={s} value={s}>{s.replace('_', ' ')}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Dialog>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" size="sm" className="border-[var(--pw-border)]" onClick={() => { setSelectedWo(wo); setNote(''); }}>
-                          Notes ({wo.notes?.length || 0})
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle className="font-heading">Work Order Notes</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-3 max-h-60 overflow-y-auto">
-                          {wo.notes?.map((n, i) => (
-                            <div key={i} className="p-3 bg-[var(--pw-warm)] rounded-lg text-sm">
-                              <p className="text-[var(--pw-ink)]">{n.body}</p>
-                              <p className="text-xs text-[var(--pw-slate)] mt-1">{n.authorName}</p>
+                    <div className="flex flex-col gap-2 shrink-0">
+                      <div className="flex items-center gap-2">
+                        <Select value={wo.status} onValueChange={(v) => handleStatusChange(wo.id, v)}>
+                          <SelectTrigger className="w-full sm:w-36"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {['new', 'assigned', 'scheduled', 'in_progress', 'pending_parts', 'completed', 'cancelled'].map((s) => (
+                              <SelectItem key={s} value={s}>{s.replace('_', ' ')}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Dialog>
+                          <DialogTrigger asChild>
+                            <Button variant="outline" size="sm" className="border-[var(--pw-border)]" onClick={() => { setSelectedWo(wo); setNote(''); }}>
+                              Notes ({wo.notes?.length || 0})
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
+                            <DialogHeader><DialogTitle className="font-heading">Work Order Notes</DialogTitle></DialogHeader>
+                            <div className="space-y-3 max-h-60 overflow-y-auto">
+                              {wo.notes?.map((n, i) => (
+                                <div key={i} className="p-3 bg-[var(--pw-warm)] rounded-lg text-sm">
+                                  <p className="text-[var(--pw-ink)]">{n.body}</p>
+                                  <p className="text-xs text-[var(--pw-slate)] mt-1">{n.authorName}</p>
+                                </div>
+                              ))}
+                              {(!wo.notes || wo.notes.length === 0) && <p className="text-sm text-[var(--pw-slate)]">No notes yet.</p>}
                             </div>
-                          ))}
-                          {(!wo.notes || wo.notes.length === 0) && (
-                            <p className="text-sm text-[var(--pw-slate)]">No notes yet.</p>
-                          )}
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Add Note</Label>
-                          <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} />
-                          <Button size="sm" onClick={handleAddNote}>Add Note</Button>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
+                            <div className="space-y-2">
+                              <Label>Add Note</Label>
+                              <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} />
+                              <Button size="sm" onClick={handleAddNote}>Add Note</Button>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                      {/* Vendor Assignment */}
+                      {!['completed', 'cancelled'].includes(wo.status) && (
+                        <Select value={wo.vendorId ?? ''} onValueChange={(v) => handleVendorAssign(wo.id, v)}>
+                          <SelectTrigger className="w-full sm:w-48">
+                            <SelectValue placeholder="Assign vendor..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {matching.length > 0 && (
+                              <>
+                                <SelectItem value="_label_matching" disabled>Matching ({wo.category})</SelectItem>
+                                {matching.map((v) => (
+                                  <SelectItem key={v.id} value={v.id}>
+                                    {v.isPreferred ? '⭐ ' : ''}{v.name}
+                                  </SelectItem>
+                                ))}
+                              </>
+                            )}
+                            {vendors.filter((v) => !matching.find((m) => m.id === v.id)).length > 0 && (
+                              <>
+                                <SelectItem value="_label_other" disabled>Other vendors</SelectItem>
+                                {vendors.filter((v) => !matching.find((m) => m.id === v.id)).map((v) => (
+                                  <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
+                                ))}
+                              </>
+                            )}
+                            {vendors.length === 0 && (
+                              <SelectItem value="_label_none" disabled>No vendors yet</SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
           {filteredWorkOrders.length === 0 && workOrders.length > 0 && (
-            <Card className="border-[var(--pw-border)]">
-              <CardContent className="pt-6 text-center text-[var(--pw-slate)]">
-                No work orders match your filters.
-              </CardContent>
-            </Card>
+            <Card className="border-[var(--pw-border)]"><CardContent className="pt-6 text-center text-[var(--pw-slate)]">No work orders match your filters.</CardContent></Card>
           )}
           {workOrders.length === 0 && (
-            <Card className="border-[var(--pw-border)]">
-              <CardContent className="pt-6 text-center text-[var(--pw-slate)]">
-                No work orders yet. They&apos;ll appear when tenants report maintenance issues via SMS.
-              </CardContent>
-            </Card>
+            <Card className="border-[var(--pw-border)]"><CardContent className="pt-6 text-center text-[var(--pw-slate)]">No work orders yet. They&apos;ll appear when tenants report maintenance issues via SMS.</CardContent></Card>
           )}
         </div>
       )}
