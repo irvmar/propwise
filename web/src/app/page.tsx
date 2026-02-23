@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export default function LandingPage() {
   const observerRef = useRef<IntersectionObserver | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     observerRef.current = new IntersectionObserver(
@@ -143,42 +144,65 @@ export default function LandingPage() {
       <div className="grain" />
 
       {/* Navigation */}
-      <nav style={{
-        position: 'sticky', top: 0, zIndex: 50,
-        background: 'rgba(250, 248, 245, 0.85)', backdropFilter: 'blur(20px)',
-        borderBottom: '1px solid var(--pw-border)',
-      }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 32, height: 32, background: 'var(--pw-accent)', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontFamily: 'DM Serif Display', fontSize: 18 }}>P</div>
+      <nav className="sticky top-0 z-50 border-b border-[var(--pw-border)]" style={{ background: 'rgba(250, 248, 245, 0.85)', backdropFilter: 'blur(20px)' }}>
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white" style={{ background: 'var(--pw-accent)', fontFamily: 'DM Serif Display', fontSize: 18 }}>P</div>
             <span style={{ fontFamily: 'DM Serif Display', fontSize: 20 }}>PropWise</span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
-            <a href="#features" style={{ fontSize: 14, fontWeight: 500, color: 'var(--pw-slate)', textDecoration: 'none' }}>Features</a>
-            <a href="#how-it-works" style={{ fontSize: 14, fontWeight: 500, color: 'var(--pw-slate)', textDecoration: 'none' }}>How It Works</a>
-            <Link href="/pricing" style={{ fontSize: 14, fontWeight: 500, color: 'var(--pw-slate)', textDecoration: 'none' }}>Pricing</Link>
-            <Link href="/auth/login" style={{ fontSize: 14, fontWeight: 500, color: 'var(--pw-slate)', textDecoration: 'none' }}>Sign In</Link>
+
+          {/* Desktop nav links */}
+          <div className="hidden md:flex items-center gap-8">
+            <a href="#features" className="text-sm font-medium no-underline" style={{ color: 'var(--pw-slate)' }}>Features</a>
+            <a href="#how-it-works" className="text-sm font-medium no-underline" style={{ color: 'var(--pw-slate)' }}>How It Works</a>
+            <Link href="/pricing" className="text-sm font-medium no-underline" style={{ color: 'var(--pw-slate)' }}>Pricing</Link>
+            <Link href="/auth/login" className="text-sm font-medium no-underline" style={{ color: 'var(--pw-slate)' }}>Sign In</Link>
             <Link href="/auth/signup" className="cta-btn" style={{ padding: '10px 24px', fontSize: 13 }}>
               Get Started
             </Link>
           </div>
+
+          {/* Mobile hamburger button */}
+          <button
+            className="md:hidden flex flex-col gap-1.5 p-2"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle menu"
+            style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+          >
+            <span className={`block w-5 h-0.5 bg-[var(--pw-ink)] transition-transform ${mobileMenuOpen ? 'rotate-45 translate-y-[4px]' : ''}`} />
+            <span className={`block w-5 h-0.5 bg-[var(--pw-ink)] transition-opacity ${mobileMenuOpen ? 'opacity-0' : ''}`} />
+            <span className={`block w-5 h-0.5 bg-[var(--pw-ink)] transition-transform ${mobileMenuOpen ? '-rotate-45 -translate-y-[4px]' : ''}`} />
+          </button>
         </div>
+
+        {/* Mobile menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-[var(--pw-border)] px-4 sm:px-6 py-4 flex flex-col gap-4" style={{ background: 'var(--pw-cream)' }}>
+            <a href="#features" onClick={() => setMobileMenuOpen(false)} className="text-sm font-medium no-underline py-2" style={{ color: 'var(--pw-slate)' }}>Features</a>
+            <a href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="text-sm font-medium no-underline py-2" style={{ color: 'var(--pw-slate)' }}>How It Works</a>
+            <Link href="/pricing" onClick={() => setMobileMenuOpen(false)} className="text-sm font-medium no-underline py-2" style={{ color: 'var(--pw-slate)' }}>Pricing</Link>
+            <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)} className="text-sm font-medium no-underline py-2" style={{ color: 'var(--pw-slate)' }}>Sign In</Link>
+            <Link href="/auth/signup" onClick={() => setMobileMenuOpen(false)} className="cta-btn" style={{ padding: '10px 24px', fontSize: 13, justifyContent: 'center' }}>
+              Get Started
+            </Link>
+          </div>
+        )}
       </nav>
 
       {/* Hero */}
-      <section style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 32px 80px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, alignItems: 'center' }}>
+      <section className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-12 lg:pt-24 lg:pb-20 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-20 items-center">
         <div>
-          <div className="reveal" style={{ display: 'inline-block', padding: '6px 16px', background: 'var(--pw-sage-soft)', borderRadius: 100, fontSize: 13, fontWeight: 500, color: 'var(--pw-sage)', marginBottom: 24 }}>
+          <div className="reveal inline-block px-4 py-1.5 rounded-full text-[13px] font-medium mb-6" style={{ background: 'var(--pw-sage-soft)', color: 'var(--pw-sage)' }}>
             AI-Powered Property Management
           </div>
-          <h1 className="reveal reveal-delay-1" style={{ fontSize: 56, lineHeight: 1.1, letterSpacing: '-0.02em', marginBottom: 24 }}>
+          <h1 className="reveal reveal-delay-1 text-3xl sm:text-4xl lg:text-[56px] leading-tight mb-6" style={{ letterSpacing: '-0.02em' }}>
             Your tenants text.<br />
             <span style={{ color: 'var(--pw-accent)' }}>AI handles the rest.</span>
           </h1>
-          <p className="reveal reveal-delay-2" style={{ fontSize: 18, lineHeight: 1.7, color: 'var(--pw-slate)', maxWidth: 440, marginBottom: 40 }}>
+          <p className="reveal reveal-delay-2 text-base lg:text-lg leading-relaxed max-w-[440px] mb-10" style={{ color: 'var(--pw-slate)' }}>
             PropWise AI is an SMS-first agent that manages tenant communication, coordinates maintenance, and sends rent reminders — so you can focus on growing your portfolio.
           </p>
-          <div className="reveal reveal-delay-3" style={{ display: 'flex', gap: 16 }}>
+          <div className="reveal reveal-delay-3 flex flex-wrap gap-4">
             <Link href="/auth/signup" className="cta-btn">
               Start Free Trial
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8h10m0 0L9 4m4 4L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -188,51 +212,51 @@ export default function LandingPage() {
         </div>
 
         {/* SMS Demo */}
-        <div className="reveal reveal-delay-2" style={{ background: 'white', borderRadius: 24, padding: 32, border: '1px solid var(--pw-border)', boxShadow: '0 24px 48px rgba(26,23,20,0.06)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24, paddingBottom: 16, borderBottom: '1px solid var(--pw-border)' }}>
-            <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'var(--pw-warm)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 600, color: 'var(--pw-accent)' }}>JD</div>
+        <div className="reveal reveal-delay-2 rounded-3xl p-6 lg:p-8 border border-[var(--pw-border)]" style={{ background: 'white', boxShadow: '0 24px 48px rgba(26,23,20,0.06)' }}>
+          <div className="flex items-center gap-3 mb-6 pb-4 border-b border-[var(--pw-border)]">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold" style={{ background: 'var(--pw-warm)', color: 'var(--pw-accent)' }}>JD</div>
             <div>
-              <div style={{ fontWeight: 600, fontSize: 14 }}>Jessica Davis</div>
-              <div style={{ fontSize: 12, color: 'var(--pw-slate)' }}>Unit 4B &middot; Maple Gardens</div>
+              <div className="font-semibold text-sm">Jessica Davis</div>
+              <div className="text-xs" style={{ color: 'var(--pw-slate)' }}>Unit 4B &middot; Maple Gardens</div>
             </div>
-            <div style={{ marginLeft: 'auto', padding: '4px 10px', background: 'var(--pw-sage-soft)', borderRadius: 100, fontSize: 11, fontWeight: 600, color: 'var(--pw-sage)' }}>AI Active</div>
+            <div className="ml-auto px-2.5 py-1 rounded-full text-[11px] font-semibold" style={{ background: 'var(--pw-sage-soft)', color: 'var(--pw-sage)' }}>AI Active</div>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div className="flex flex-col gap-3">
             <div className="sms-bubble inbound">Hi, my kitchen faucet has been leaking since this morning. Water is dripping constantly.</div>
             <div className="sms-bubble outbound">Hi Jessica! I&apos;ve logged a maintenance request for your kitchen faucet leak. A plumber will reach out within 24hrs to schedule a visit. Is the leak contained, or is it getting worse?</div>
             <div className="sms-bubble inbound">It&apos;s steady but not getting worse. I put a bowl under it.</div>
             <div className="sms-bubble outbound">Smart thinking with the bowl! I&apos;ve noted the leak is stable. Mike from Reliable Plumbing has been assigned — he&apos;ll contact you today to schedule. Anything else I can help with?</div>
           </div>
-          <div style={{ marginTop: 16, padding: '12px 16px', background: 'var(--pw-warm)', borderRadius: 12, fontSize: 12, color: 'var(--pw-sage)', fontWeight: 500, textAlign: 'center' }}>
+          <div className="mt-4 p-3 rounded-xl text-xs font-medium text-center" style={{ background: 'var(--pw-warm)', color: 'var(--pw-sage)' }}>
             Work order created &middot; Vendor assigned &middot; 0 PM time spent
           </div>
         </div>
       </section>
 
       {/* Social proof strip */}
-      <section className="reveal" style={{ borderTop: '1px solid var(--pw-border)', borderBottom: '1px solid var(--pw-border)', padding: '32px 0', background: 'var(--pw-warm)' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '0 32px', display: 'flex', justifyContent: 'center', gap: 64, flexWrap: 'wrap' }}>
+      <section className="reveal border-t border-b border-[var(--pw-border)] py-8" style={{ background: 'var(--pw-warm)' }}>
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 flex justify-center gap-6 sm:gap-8 lg:gap-16 flex-wrap">
           {[
             { value: '< 30s', label: 'Avg. response time' },
             { value: '85%', label: 'Issues resolved by AI' },
             { value: '12hrs', label: 'Saved per week' },
             { value: '4.9/5', label: 'Tenant satisfaction' },
           ].map((stat) => (
-            <div key={stat.label} style={{ textAlign: 'center' }}>
-              <div style={{ fontFamily: 'DM Serif Display', fontSize: 28, color: 'var(--pw-accent)' }}>{stat.value}</div>
-              <div style={{ fontSize: 13, color: 'var(--pw-slate)', marginTop: 4 }}>{stat.label}</div>
+            <div key={stat.label} className="text-center">
+              <div className="text-xl sm:text-2xl lg:text-[28px]" style={{ fontFamily: 'DM Serif Display', color: 'var(--pw-accent)' }}>{stat.value}</div>
+              <div className="text-[13px] mt-1" style={{ color: 'var(--pw-slate)' }}>{stat.label}</div>
             </div>
           ))}
         </div>
       </section>
 
       {/* Features */}
-      <section id="features" style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 32px' }}>
-        <div className="reveal" style={{ textAlign: 'center', marginBottom: 64 }}>
-          <h2 style={{ fontSize: 42, marginBottom: 16 }}>Everything a PM needs,<br />nothing they don&apos;t</h2>
-          <p style={{ fontSize: 16, color: 'var(--pw-slate)', maxWidth: 520, margin: '0 auto' }}>Purpose-built for residential property managers managing 10 to 500+ units.</p>
+      <section id="features" className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
+        <div className="reveal text-center mb-12 lg:mb-16">
+          <h2 className="text-2xl sm:text-3xl lg:text-[42px] mb-4">Everything a PM needs,<br />nothing they don&apos;t</h2>
+          <p className="text-base max-w-[520px] mx-auto" style={{ color: 'var(--pw-slate)' }}>Purpose-built for residential property managers managing 10 to 500+ units.</p>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
           {[
             { icon: '\uD83D\uDCAC', title: 'AI SMS Agent', desc: 'Answers tenant questions instantly using your property knowledge base. Handles FAQs, lease questions, and community info \u2014 24/7.' },
             { icon: '\uD83D\uDD27', title: 'Smart Maintenance', desc: 'Tenants text about issues, AI classifies urgency, creates work orders, and assigns vendors automatically.' },
@@ -242,33 +266,33 @@ export default function LandingPage() {
             { icon: '\uD83E\uDDE0', title: 'Knowledge Base', desc: 'Train the AI with your property policies, payment info, and FAQs. It gets smarter as you add more context.' },
           ].map((feature, i) => (
             <div key={feature.title} className={`reveal reveal-delay-${Math.min(i + 1, 4)} feature-card`}>
-              <div style={{ fontSize: 32, marginBottom: 16 }}>{feature.icon}</div>
-              <h3 style={{ fontSize: 20, marginBottom: 8 }}>{feature.title}</h3>
-              <p style={{ fontSize: 14, lineHeight: 1.7, color: 'var(--pw-slate)' }}>{feature.desc}</p>
+              <div className="text-[32px] mb-4">{feature.icon}</div>
+              <h3 className="text-xl mb-2">{feature.title}</h3>
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--pw-slate)' }}>{feature.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* How It Works */}
-      <section id="how-it-works" style={{ background: 'var(--pw-warm)', borderTop: '1px solid var(--pw-border)', borderBottom: '1px solid var(--pw-border)' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 32px' }}>
-          <div className="reveal" style={{ textAlign: 'center', marginBottom: 64 }}>
-            <h2 style={{ fontSize: 42, marginBottom: 16 }}>Live in 15 minutes</h2>
-            <p style={{ fontSize: 16, color: 'var(--pw-slate)' }}>No technical setup required. No app for tenants to download.</p>
+      <section id="how-it-works" className="border-t border-b border-[var(--pw-border)]" style={{ background: 'var(--pw-warm)' }}>
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
+          <div className="reveal text-center mb-12 lg:mb-16">
+            <h2 className="text-2xl sm:text-3xl lg:text-[42px] mb-4">Live in 15 minutes</h2>
+            <p className="text-base" style={{ color: 'var(--pw-slate)' }}>No technical setup required. No app for tenants to download.</p>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 48, maxWidth: 640, margin: '0 auto' }}>
+          <div className="flex flex-col gap-12 max-w-[640px] mx-auto">
             {[
               { num: '1', title: 'Add your properties and tenants', desc: 'Import or manually add your units and tenant phone numbers through the dashboard.' },
               { num: '2', title: 'Set up your knowledge base', desc: 'Add your property policies, payment info, maintenance procedures, and FAQs.' },
               { num: '3', title: 'Connect your Twilio number', desc: 'Point your Twilio number to PropWise. We handle everything from there.' },
               { num: '4', title: 'Your AI agent goes live', desc: 'Tenants text your number, AI responds intelligently, and you see everything in your dashboard.' },
             ].map((step, i) => (
-              <div key={step.num} className={`reveal reveal-delay-${Math.min(i + 1, 4)}`} style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
+              <div key={step.num} className={`reveal reveal-delay-${Math.min(i + 1, 4)} flex gap-6 items-start`}>
                 <div className="step-number">{step.num}</div>
                 <div>
-                  <h3 style={{ fontSize: 20, marginBottom: 6 }}>{step.title}</h3>
-                  <p style={{ fontSize: 14, lineHeight: 1.7, color: 'var(--pw-slate)' }}>{step.desc}</p>
+                  <h3 className="text-xl mb-1.5">{step.title}</h3>
+                  <p className="text-sm leading-relaxed" style={{ color: 'var(--pw-slate)' }}>{step.desc}</p>
                 </div>
               </div>
             ))}
@@ -277,47 +301,40 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing Preview */}
-      <section style={{ maxWidth: 1200, margin: '0 auto', padding: '100px 32px' }}>
-        <div className="reveal" style={{ textAlign: 'center', marginBottom: 64 }}>
-          <h2 style={{ fontSize: 42, marginBottom: 16 }}>Simple, transparent pricing</h2>
-          <p style={{ fontSize: 16, color: 'var(--pw-slate)' }}>Start small, scale as you grow. No hidden fees.</p>
+      <section className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
+        <div className="reveal text-center mb-12 lg:mb-16">
+          <h2 className="text-2xl sm:text-3xl lg:text-[42px] mb-4">Simple, transparent pricing</h2>
+          <p className="text-base" style={{ color: 'var(--pw-slate)' }}>Start small, scale as you grow. No hidden fees.</p>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
           {[
             { name: 'Growth', price: 99, desc: 'For independent landlords', units: '3 properties · 50 units', messages: '500 msgs/mo', highlight: false },
             { name: 'Professional', price: 199, desc: 'For growing portfolios', units: '10 properties · 150 units', messages: '2,000 msgs/mo', highlight: true },
             { name: 'Enterprise', price: 349, desc: 'For management companies', units: 'Unlimited properties · 500 units', messages: '5,000 msgs/mo', highlight: false },
           ].map((plan, i) => (
-            <div key={plan.name} className={`reveal reveal-delay-${i + 1}`} style={{
+            <div key={plan.name} className={`reveal reveal-delay-${i + 1} rounded-[20px] p-6 lg:p-10 relative overflow-hidden`} style={{
               background: plan.highlight ? 'var(--pw-ink)' : 'white',
               color: plan.highlight ? 'white' : 'var(--pw-ink)',
-              borderRadius: 20,
-              padding: 40,
               border: plan.highlight ? 'none' : '1px solid var(--pw-border)',
-              position: 'relative',
-              overflow: 'hidden',
             }}>
               {plan.highlight && (
-                <div style={{ position: 'absolute', top: 16, right: 16, padding: '4px 12px', background: 'var(--pw-accent)', borderRadius: 100, fontSize: 11, fontWeight: 600 }}>
+                <div className="absolute top-4 right-4 px-3 py-1 rounded-full text-[11px] font-semibold" style={{ background: 'var(--pw-accent)' }}>
                   Most Popular
                 </div>
               )}
-              <div style={{ fontSize: 14, fontWeight: 500, opacity: 0.7, marginBottom: 8 }}>{plan.desc}</div>
-              <h3 style={{ fontSize: 24, marginBottom: 4 }}>{plan.name}</h3>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 24 }}>
-                <span style={{ fontFamily: 'DM Serif Display', fontSize: 48 }}>${plan.price}</span>
-                <span style={{ fontSize: 14, opacity: 0.6 }}>/month</span>
+              <div className="text-sm font-medium opacity-70 mb-2">{plan.desc}</div>
+              <h3 className="text-2xl mb-1">{plan.name}</h3>
+              <div className="flex items-baseline gap-1 mb-6">
+                <span className="text-3xl sm:text-4xl lg:text-[48px]" style={{ fontFamily: 'DM Serif Display' }}>${plan.price}</span>
+                <span className="text-sm opacity-60">/month</span>
               </div>
-              <div style={{ fontSize: 14, lineHeight: 2, opacity: 0.8 }}>
+              <div className="text-sm leading-8 opacity-80">
                 <div>{plan.units}</div>
                 <div>{plan.messages}</div>
                 <div>AI SMS Agent</div>
                 <div>Dashboard</div>
               </div>
-              <Link href="/auth/signup" className="cta-btn" style={{
-                marginTop: 24,
-                width: '100%',
-                justifyContent: 'center',
+              <Link href="/auth/signup" className="cta-btn mt-6 w-full justify-center" style={{
                 background: plan.highlight ? 'white' : 'var(--pw-ink)',
                 color: plan.highlight ? 'var(--pw-ink)' : 'white',
               }}>
@@ -326,32 +343,32 @@ export default function LandingPage() {
             </div>
           ))}
         </div>
-        <div className="reveal" style={{ textAlign: 'center', marginTop: 32 }}>
-          <Link href="/pricing" style={{ fontSize: 14, color: 'var(--pw-accent)', fontWeight: 500, textDecoration: 'underline' }}>View full pricing comparison</Link>
+        <div className="reveal text-center mt-8">
+          <Link href="/pricing" className="text-sm font-medium underline" style={{ color: 'var(--pw-accent)' }}>View full pricing comparison</Link>
         </div>
       </section>
 
       {/* CTA */}
-      <section className="reveal" style={{ background: 'var(--pw-ink)', color: 'white', borderRadius: '32px 32px 0 0', marginTop: 40 }}>
-        <div style={{ maxWidth: 800, margin: '0 auto', padding: '100px 32px', textAlign: 'center' }}>
-          <h2 style={{ fontSize: 42, marginBottom: 16 }}>Stop managing texts.<br />Start managing properties.</h2>
-          <p style={{ fontSize: 16, opacity: 0.7, marginBottom: 40, maxWidth: 480, margin: '0 auto 40px' }}>Join property managers who&apos;ve reclaimed 12+ hours per week with PropWise AI.</p>
-          <Link href="/auth/signup" className="cta-btn" style={{ background: 'var(--pw-accent)', fontSize: 16, padding: '16px 40px' }}>
+      <section className="reveal mt-10" style={{ background: 'var(--pw-ink)', color: 'white', borderRadius: '32px 32px 0 0' }}>
+        <div className="max-w-[800px] mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24 text-center">
+          <h2 className="text-2xl sm:text-3xl lg:text-[42px] mb-4">Stop managing texts.<br />Start managing properties.</h2>
+          <p className="text-base opacity-70 max-w-[480px] mx-auto mb-10">Join property managers who&apos;ve reclaimed 12+ hours per week with PropWise AI.</p>
+          <Link href="/auth/signup" className="cta-btn text-base" style={{ background: 'var(--pw-accent)', padding: '16px 40px' }}>
             Start Your Free Trial
             <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M3 8h10m0 0L9 4m4 4L9 12" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
           </Link>
-          <p style={{ fontSize: 13, opacity: 0.5, marginTop: 16 }}>14-day free trial &middot; No credit card required</p>
+          <p className="text-[13px] opacity-50 mt-4">14-day free trial &middot; No credit card required</p>
         </div>
       </section>
 
       {/* Footer */}
-      <footer style={{ background: 'var(--pw-ink)', color: 'white', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-        <div style={{ maxWidth: 1200, margin: '0 auto', padding: '40px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <div style={{ width: 24, height: 24, background: 'var(--pw-accent)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontFamily: 'DM Serif Display', fontSize: 14 }}>P</div>
+      <footer className="border-t border-white/10" style={{ background: 'var(--pw-ink)', color: 'white' }}>
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 py-10 flex flex-col sm:flex-row gap-4 items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md flex items-center justify-center text-white" style={{ background: 'var(--pw-accent)', fontFamily: 'DM Serif Display', fontSize: 14 }}>P</div>
             <span style={{ fontFamily: 'DM Serif Display', fontSize: 16 }}>PropWise AI</span>
           </div>
-          <div style={{ fontSize: 13, opacity: 0.5 }}>&copy; 2026 PropWise AI. All rights reserved.</div>
+          <div className="text-[13px] opacity-50">&copy; 2026 PropWise AI. All rights reserved.</div>
         </div>
       </footer>
     </div>
