@@ -1,0 +1,21 @@
+{
+  "name": "propwise-ai",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "packages/shared",
+    "functions",
+    "web"
+  ],
+  "scripts": {
+    "build:shared": "npm run build -w packages/shared",
+    "build:functions": "npm run build -w functions",
+    "build:web": "npm run build -w web",
+    "dev:web": "npm run dev -w web",
+    "dev:functions": "npm run serve -w functions",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
