@@ -7,7 +7,7 @@ function getClient(): Anthropic {
   if (!client) {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) throw new Error('ANTHROPIC_API_KEY not configured');
-    client = new Anthropic({ apiKey });
+    client = new Anthropic({ apiKey, maxRetries: 3 });
   }
   return client;
 }
@@ -17,6 +17,135 @@ export interface ClaudeResponse {
   inputTokens: number;
   outputTokens: number;
 }
+
+// ─── Tool-based Agentic Call ──────────────────────────────────────────────────
+
+export type ToolExecutor = (
+  name: string,
+  input: Record<string, unknown>,
+) => Promise<{ result: string; isError?: boolean }>;
+
+/**
+ * Single entry point for tool-based agent calls.
+ * Handles the full agentic loop: call Claude → execute tools → feed results → repeat.
+ * Max iterations prevents runaway loops.
+ */
+export async function callWithTools(
+  systemPrompt: string,
+  messages: Anthropic.MessageParam[],
+  tools: Anthropic.Tool[],
+  toolExecutor?: ToolExecutor,
+  maxIterations = 3,
+): Promise<Anthropic.Message> {
+  const anthropic = getClient();
+
+  // Prompt caching: cache_control on system prompt and tools reduces cost on multi-turn SMS conversations.
+  // The cache_control property is available on SDK >=0.50.0. We use type assertions
+  // to maintain compatibility during the SDK upgrade transition.
+  const systemWithCache = [
+    {
+      type: 'text' as const,
+      text: systemPrompt,
+      cache_control: { type: 'ephemeral' },
+    },
+  ] as unknown as Anthropic.TextBlockParam[];
+
+  const toolsWithCache = tools.map((tool, i) =>
+    i === tools.length - 1
+      ? { ...tool, cache_control: { type: 'ephemeral' } }
+      : tool,
+  ) as Anthropic.Tool[];
+
+  const currentMessages = [...messages];
+
+  logger.info('Calling Claude API with tools', {
+    messageCount: currentMessages.length,
+    toolCount: tools.length,
+  });
+
+  let response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 1024,
+    system: systemWithCache,
+    messages: currentMessages,
+    tools: toolsWithCache,
+  });
+
+  logger.info('Claude response received', {
+    stopReason: response.stop_reason,
+    inputTokens: response.usage.input_tokens,
+    outputTokens: response.usage.output_tokens,
+  });
+
+  // Agentic loop: if Claude wants to use tools, execute and feed back
+  let iterations = 0;
+  while (response.stop_reason === 'tool_use' && iterations < maxIterations) {
+    iterations++;
+
+    // If no tool executor provided, return the response for caller to handle
+    if (!toolExecutor) {
+      return response;
+    }
+
+    // Execute all tool calls in this response
+    const toolResults: Anthropic.ToolResultBlockParam[] = [];
+    for (const block of response.content) {
+      if (block.type === 'tool_use') {
+        try {
+          const { result, isError } = await toolExecutor(
+            block.name,
+            block.input as Record<string, unknown>,
+          );
+          toolResults.push({
+            type: 'tool_result',
+            tool_use_id: block.id,
+            content: result,
+            ...(isError ? { is_error: true } : {}),
+          });
+        } catch (error) {
+          toolResults.push({
+            type: 'tool_result',
+            tool_use_id: block.id,
+            content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            is_error: true,
+          });
+        }
+      }
+    }
+
+    // Append assistant response + tool results, then call again
+    currentMessages.push({ role: 'assistant', content: response.content });
+    currentMessages.push({ role: 'user', content: toolResults });
+
+    logger.info('Continuing Claude call with tool results', {
+      iteration: iterations,
+      toolResultCount: toolResults.length,
+    });
+
+    response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1024,
+      system: systemWithCache,
+      messages: currentMessages,
+      tools: toolsWithCache,
+    });
+
+    logger.info('Claude continuation response', {
+      stopReason: response.stop_reason,
+      inputTokens: response.usage.input_tokens,
+      outputTokens: response.usage.output_tokens,
+      iteration: iterations,
+    });
+  }
+
+  if (iterations >= maxIterations && response.stop_reason === 'tool_use') {
+    logger.warn('Agent loop hit max iterations', { maxIterations });
+  }
+
+  return response;
+}
+
+// ─── Legacy Functions (backward compatibility) ────────────────────────────────
 
 export async function generateResponse(
   systemPrompt: string,

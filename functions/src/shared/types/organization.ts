@@ -26,6 +26,7 @@ export interface OrganizationSettings {
   rentReminderDaysBefore: number[];
   emergencyKeywords: string[];
   defaultLanguage: string;
+  autoApprovalThreshold?: number; // dollars — auto-approve maintenance under this amount
 }
 
 export interface BusinessHours {

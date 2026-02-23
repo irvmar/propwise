@@ -23,6 +23,7 @@ interface WorkOrder {
   tenantId: string;
   tenantName?: string;
   vendorId?: string;
+  scheduledDate?: string;
   source: string;
   createdAt: any;
   notes: Array<{ body: string; authorName: string; createdAt: any }>;
@@ -44,11 +45,14 @@ const priorityColors: Record<string, string> = {
 
 const statusColors: Record<string, string> = {
   new: 'bg-[var(--pw-warm)] text-[var(--pw-ink)]',
+  vendor_contacted: 'bg-[var(--pw-accent-soft)]/30 text-[var(--pw-accent)]',
   assigned: 'bg-[var(--pw-accent-soft)]/30 text-[var(--pw-accent)]',
   scheduled: 'bg-[var(--pw-accent-soft)]/30 text-[var(--pw-accent)]',
   in_progress: 'bg-[var(--pw-sage-soft)] text-[var(--pw-sage)]',
+  pending_parts: 'bg-[var(--pw-warm)] text-[var(--pw-ink)]',
   completed: 'bg-[var(--pw-sage-soft)] text-[var(--pw-sage)]',
   cancelled: 'bg-[var(--pw-warm)] text-[var(--pw-slate)]',
+  escalated: 'bg-red-100 text-red-800',
 };
 
 const priorityOrder: Record<string, number> = {
@@ -58,11 +62,14 @@ const priorityOrder: Record<string, number> = {
 const statusFilterOptions = [
   { value: 'all', label: 'All Status' },
   { value: 'new', label: 'New' },
+  { value: 'vendor_contacted', label: 'Vendor Contacted' },
   { value: 'assigned', label: 'Assigned' },
   { value: 'scheduled', label: 'Scheduled' },
   { value: 'in_progress', label: 'In Progress' },
+  { value: 'pending_parts', label: 'Pending Parts' },
   { value: 'completed', label: 'Completed' },
   { value: 'cancelled', label: 'Cancelled' },
+  { value: 'escalated', label: 'Escalated' },
 ];
 
 const priorityFilterOptions = [
@@ -79,9 +86,16 @@ const categoryFilterOptions = [
   { value: 'electrical', label: 'Electrical' },
   { value: 'hvac', label: 'HVAC' },
   { value: 'appliance', label: 'Appliance' },
-  { value: 'general', label: 'General' },
+  { value: 'structural', label: 'Structural' },
   { value: 'pest_control', label: 'Pest Control' },
+  { value: 'landscaping', label: 'Landscaping' },
+  { value: 'cleaning', label: 'Cleaning' },
+  { value: 'painting', label: 'Painting' },
+  { value: 'flooring', label: 'Flooring' },
+  { value: 'roofing', label: 'Roofing' },
   { value: 'locksmith', label: 'Locksmith' },
+  { value: 'general', label: 'General' },
+  { value: 'other', label: 'Other' },
 ];
 
 const sortOptions = [
@@ -107,7 +121,7 @@ export default function WorkOrdersPage() {
 
   const handleStatusChange = async (workOrderId: string, status: string) => {
     const result = await updateWorkOrder({ workOrderId, status });
-    if (result) toast.success(`Status updated to ${status.replace('_', ' ')}`);
+    if (result) toast.success(`Status updated to ${status.replace(/_/g, ' ')}`);
   };
 
   const handleVendorAssign = async (workOrderId: string, vendorId: string) => {
@@ -238,12 +252,15 @@ export default function WorkOrdersPage() {
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <h3 className="font-semibold text-[var(--pw-ink)]">{wo.title}</h3>
                         <Badge className={priorityColors[wo.priority]}>{wo.priority}</Badge>
-                        <Badge className={statusColors[wo.status]}>{wo.status.replace('_', ' ')}</Badge>
+                        <Badge className={statusColors[wo.status]}>{wo.status.replace(/_/g, ' ')}</Badge>
                         <Badge variant="outline" className="border-[var(--pw-border)]">{wo.category}</Badge>
                       </div>
                       <p className="text-sm text-[var(--pw-slate)]">{wo.description}</p>
                       {vendorName && (
                         <p className="text-sm text-[var(--pw-accent)] mt-1 font-medium">Assigned to: {vendorName}</p>
+                      )}
+                      {wo.scheduledDate && (
+                        <p className="text-sm text-[var(--pw-sage)] mt-1">Scheduled: {new Date(wo.scheduledDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</p>
                       )}
                       <p className="text-xs text-[var(--pw-slate)]/70 mt-2">
                         Source: {wo.source} &middot; Created: {wo.createdAt?.toDate?.()?.toLocaleDateString() ?? 'N/A'}
@@ -254,8 +271,8 @@ export default function WorkOrdersPage() {
                         <Select value={wo.status} onValueChange={(v) => handleStatusChange(wo.id, v)}>
                           <SelectTrigger className="w-full sm:w-36"><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            {['new', 'assigned', 'scheduled', 'in_progress', 'pending_parts', 'completed', 'cancelled'].map((s) => (
-                              <SelectItem key={s} value={s}>{s.replace('_', ' ')}</SelectItem>
+                            {['new', 'vendor_contacted', 'assigned', 'scheduled', 'in_progress', 'pending_parts', 'completed', 'cancelled', 'escalated'].map((s) => (
+                              <SelectItem key={s} value={s}>{s.replace(/_/g, ' ')}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>

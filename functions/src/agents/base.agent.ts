@@ -1,10 +1,12 @@
-import { IntentCategory, Tenant, Organization, KnowledgeBase } from '../shared';
+import { IntentCategory, Tenant, Organization, KnowledgeBase, WorkOrder } from '../shared';
 
 export interface AgentContext {
   tenant: Tenant;
   organization: Organization;
   knowledgeBase: KnowledgeBase[];
   conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>;
+  recentWorkOrders?: (WorkOrder & { vendorName?: string })[];
+  mediaUrls?: string[]; // MMS photo URLs attached to current message
 }
 
 export interface AgentResponse {

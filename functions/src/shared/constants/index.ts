@@ -2,7 +2,7 @@ import { IntentCategory, WorkOrderCategory, WorkOrderPriority, WorkOrderStatus, 
 
 export const INTENT_CATEGORIES: IntentCategory[] = [
   'maintenance', 'rent_inquiry', 'lease_question', 'emergency',
-  'complaint', 'general_inquiry', 'greeting', 'unknown',
+  'complaint', 'general_inquiry', 'greeting', 'status_inquiry', 'unknown',
 ];
 
 export const WORK_ORDER_CATEGORIES: WorkOrderCategory[] = [
@@ -18,6 +18,25 @@ export const WORK_ORDER_STATUSES: WorkOrderStatus[] = [
 
 export const WORK_ORDER_PRIORITIES: WorkOrderPriority[] = [
   'emergency', 'high', 'medium', 'low',
+];
+
+export const WORK_ORDER_STATUS_LABELS: Record<WorkOrderStatus, string> = {
+  new: 'Received',
+  vendor_contacted: 'Finding a technician',
+  assigned: 'Technician assigned',
+  scheduled: 'Visit scheduled',
+  in_progress: 'Work in progress',
+  pending_parts: 'Waiting for parts',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+  escalated: 'Escalated to management',
+};
+
+export const MAX_MESSAGES_PER_HOUR = 20;
+
+export const ESCALATION_KEYWORDS = [
+  'help', 'manager', 'human', 'speak to someone', 'real person',
+  'talk to someone', 'speak to manager', 'talk to manager',
 ];
 
 export const DEFAULT_EMERGENCY_KEYWORDS = [
@@ -171,6 +190,12 @@ export const SMS_TEMPLATES = {
 
   unknownTenantNoMatch: () =>
     "I couldn't find that unit. Your property manager has been notified and will get back to you soon.",
+
+  rateLimitExceeded: () =>
+    "You've sent a lot of messages recently. Please wait a bit before texting again, or text HELP to speak with a human.",
+
+  tenantCompletionFollowUp: (tenantName: string, title: string) =>
+    `Hi ${tenantName}, just checking in — was the issue "${title}" fully resolved? Reply YES if all good, or let us know if there's still a problem.`,
 };
 
 export const SMS_OPT_OUT_KEYWORDS = ['stop', 'unsubscribe', 'cancel', 'end', 'quit'];

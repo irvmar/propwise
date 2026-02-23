@@ -77,7 +77,8 @@ export const createKnowledgeBaseSchema = z.object({
 export const updateWorkOrderSchema = z.object({
   workOrderId: z.string().min(1),
   status: z.enum([
-    'new', 'assigned', 'scheduled', 'in_progress', 'pending_parts', 'completed', 'cancelled',
+    'new', 'vendor_contacted', 'assigned', 'scheduled', 'in_progress',
+    'pending_parts', 'completed', 'cancelled', 'escalated',
   ]).optional(),
   vendorId: z.string().optional(),
   assignedTo: z.string().optional(),

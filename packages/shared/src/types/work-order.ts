@@ -21,6 +21,8 @@ export interface WorkOrder {
   photos?: string[];
   notes: WorkOrderNote[];
   source: WorkOrderSource;
+  vendorContactedAt?: FirebaseTimestamp;
+  vendorDeclinedIds?: string[];
   createdAt: FirebaseTimestamp;
   updatedAt: FirebaseTimestamp;
 }
@@ -45,12 +47,14 @@ export type WorkOrderPriority = 'emergency' | 'high' | 'medium' | 'low';
 
 export type WorkOrderStatus =
   | 'new'
+  | 'vendor_contacted'
   | 'assigned'
   | 'scheduled'
   | 'in_progress'
   | 'pending_parts'
   | 'completed'
-  | 'cancelled';
+  | 'cancelled'
+  | 'escalated';
 
 export type WorkOrderSource = 'sms' | 'dashboard' | 'phone' | 'email';
 

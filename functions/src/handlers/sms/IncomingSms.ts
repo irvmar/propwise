@@ -3,7 +3,8 @@ import * as admin from 'firebase-admin';
 import { db } from '../../utils/firebase';
 import { logger } from '../../utils/logger';
 import { requireTwilioSignature } from '../../middleware/twilio.middleware';
-import { processMessage, AgentContext } from '../../agents';
+import { handleTenantMessage } from '../../agents/sms-agent';
+import { AgentContext } from '../../agents';
 import { sendSms } from '../../services/twilio.service';
 import { getOrgPlanInfo, isWithinMessageLimit } from '../../utils/plan-enforcement';
 import {
@@ -11,6 +12,7 @@ import {
   SMS_TEMPLATES,
   SMS_OPT_OUT_KEYWORDS,
   SMS_OPT_IN_KEYWORDS,
+  MAX_MESSAGES_PER_HOUR,
   Tenant,
   Vendor,
   Organization,
@@ -18,6 +20,7 @@ import {
   Message,
   KnowledgeBase,
   Unit,
+  WorkOrder,
 } from '../../shared';
 import { handleVendorSms } from './VendorIncomingSms';
 
@@ -217,8 +220,39 @@ export const incomingSms = onRequest(async (req, res) => {
       });
     }
 
+    // 4.5 Rate limiting: max messages per tenant per hour
+    const oneHourAgo = Timestamp.fromDate(new Date(Date.now() - 3600000));
+    const recentMsgCount = await db
+      .collection(COLLECTIONS.messages)
+      .where('conversationId', '==', conversationRef.id)
+      .where('direction', '==', 'inbound')
+      .where('createdAt', '>', oneHourAgo)
+      .count()
+      .get();
+
+    if (recentMsgCount.data().count >= MAX_MESSAGES_PER_HOUR) {
+      logger.warn('Rate limit exceeded for tenant', {
+        tenantId: tenant.id,
+        count: recentMsgCount.data().count,
+      });
+      await sendSms(fromPhone, SMS_TEMPLATES.rateLimitExceeded());
+      res.type('text/xml').send('<Response></Response>');
+      return;
+    }
+
+    // 4.6 Extract MMS media URLs from Twilio webhook
+    const numMedia = parseInt(req.body.NumMedia || '0', 10);
+    const mediaUrls: string[] = [];
+    for (let i = 0; i < numMedia; i++) {
+      const url = req.body[`MediaUrl${i}`];
+      if (url) mediaUrls.push(url);
+    }
+    if (mediaUrls.length > 0) {
+      logger.info('MMS media received', { count: mediaUrls.length, tenantId: tenant.id });
+    }
+
     // 5. Save inbound message
-    const inboundMessage: Omit<Message, 'id'> = {
+    const inboundMessage: Omit<Message, 'id'> & { mediaUrls?: string[] } = {
       conversationId: conversationRef.id,
       organizationId: tenant.organizationId,
       direction: 'inbound',
@@ -227,6 +261,7 @@ export const incomingSms = onRequest(async (req, res) => {
       twilioSid,
       status: 'received',
       createdAt: Timestamp.now() as any,
+      ...(mediaUrls.length > 0 ? { mediaUrls } : {}),
     };
     await db.collection(COLLECTIONS.messages).add(inboundMessage);
 
@@ -259,15 +294,52 @@ export const incomingSms = onRequest(async (req, res) => {
       ...doc.data(),
     })) as KnowledgeBase[];
 
-    // 8. Process through AI agent pipeline
+    // 7.5 Load tenant's recent work orders
+    const woSnap = await db
+      .collection(COLLECTIONS.workOrders)
+      .where('tenantId', '==', tenant.id)
+      .orderBy('updatedAt', 'desc')
+      .limit(15)
+      .get();
+
+    const rawWorkOrders = woSnap.docs
+      .map((doc) => ({ id: doc.id, ...doc.data() } as WorkOrder))
+      .filter((wo) => wo.status !== 'cancelled')
+      .slice(0, 10);
+
+    // Batch-resolve vendor names
+    const vendorIds = [...new Set(rawWorkOrders.map((wo) => wo.vendorId).filter(Boolean))] as string[];
+    const vendorNameMap: Record<string, string> = {};
+    if (vendorIds.length > 0) {
+      // Firestore 'in' queries support up to 10 items per query
+      for (let i = 0; i < vendorIds.length; i += 10) {
+        const batch = vendorIds.slice(i, i + 10);
+        const vendorSnaps = await db
+          .collection(COLLECTIONS.vendors)
+          .where(admin.firestore.FieldPath.documentId(), 'in', batch)
+          .get();
+        for (const vDoc of vendorSnaps.docs) {
+          vendorNameMap[vDoc.id] = (vDoc.data() as Vendor).name;
+        }
+      }
+    }
+
+    const recentWorkOrders = rawWorkOrders.map((wo) => ({
+      ...wo,
+      vendorName: wo.vendorId ? vendorNameMap[wo.vendorId] : undefined,
+    }));
+
+    // 8. Process through unified AI agent
     const agentContext: AgentContext = {
       tenant,
       organization,
       knowledgeBase,
       conversationHistory,
+      recentWorkOrders,
+      ...(mediaUrls.length > 0 ? { mediaUrls } : {}),
     };
 
-    const agentResponse = await processMessage(body, agentContext);
+    const agentResponse = await handleTenantMessage(body, agentContext);
 
     // 9. Send response SMS
     const responseSid = await sendSms(fromPhone, agentResponse.message);
@@ -308,18 +380,31 @@ export const incomingSms = onRequest(async (req, res) => {
         status: 'new',
         source: 'sms',
         notes: [],
+        ...(mediaUrls.length > 0 ? { photos: mediaUrls } : {}),
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
       });
     }
 
-    // 12. Update conversation if escalated
+    // 12. Update conversation if escalated + notify PM
     if (agentResponse.shouldEscalate) {
       await conversationRef.update({
         status: 'escalated',
         isEscalated: true,
         updatedAt: Timestamp.now(),
       });
+
+      // Notify property manager via SMS
+      if (organization.settings.escalationPhone) {
+        try {
+          await sendSms(
+            organization.settings.escalationPhone,
+            `URGENT: ${tenant.firstName} ${tenant.lastName} needs attention.\n\nMessage: "${body.substring(0, 200)}"`,
+          );
+        } catch (err) {
+          logger.error('Failed to send escalation SMS to PM', { error: err });
+        }
+      }
     }
 
     // Update last message preview with response

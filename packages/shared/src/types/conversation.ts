@@ -50,4 +50,5 @@ export type IntentCategory =
   | 'complaint'
   | 'general_inquiry'
   | 'greeting'
+  | 'status_inquiry'
   | 'unknown';

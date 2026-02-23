@@ -38,6 +38,7 @@ export { stripeWebhook } from './handlers/stripe/stripeWebhook';
 // Scheduled Functions
 export { rentReminders } from './handlers/scheduled/rentReminders';
 export { followUpWorkOrders } from './handlers/scheduled/followUpWorkOrders';
+export { tenantCompletionFollowUp } from './handlers/scheduled/tenantCompletionFollowUp';
 export { resetMonthlyCounters } from './handlers/scheduled/resetMonthlyCounters';
 
 // Firestore Triggers

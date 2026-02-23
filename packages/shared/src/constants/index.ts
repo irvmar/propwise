@@ -2,7 +2,7 @@ import { IntentCategory, WorkOrderCategory, WorkOrderPriority, WorkOrderStatus, 
 
 export const INTENT_CATEGORIES: IntentCategory[] = [
   'maintenance', 'rent_inquiry', 'lease_question', 'emergency',
-  'complaint', 'general_inquiry', 'greeting', 'unknown',
+  'complaint', 'general_inquiry', 'greeting', 'status_inquiry', 'unknown',
 ];
 
 export const WORK_ORDER_CATEGORIES: WorkOrderCategory[] = [
@@ -12,12 +12,25 @@ export const WORK_ORDER_CATEGORIES: WorkOrderCategory[] = [
 ];
 
 export const WORK_ORDER_STATUSES: WorkOrderStatus[] = [
-  'new', 'assigned', 'scheduled', 'in_progress', 'pending_parts', 'completed', 'cancelled',
+  'new', 'vendor_contacted', 'assigned', 'scheduled', 'in_progress',
+  'pending_parts', 'completed', 'cancelled', 'escalated',
 ];
 
 export const WORK_ORDER_PRIORITIES: WorkOrderPriority[] = [
   'emergency', 'high', 'medium', 'low',
 ];
+
+export const WORK_ORDER_STATUS_LABELS: Record<WorkOrderStatus, string> = {
+  new: 'Received',
+  vendor_contacted: 'Finding a technician',
+  assigned: 'Technician assigned',
+  scheduled: 'Visit scheduled',
+  in_progress: 'Work in progress',
+  pending_parts: 'Waiting for parts',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+  escalated: 'Escalated to management',
+};
 
 export const DEFAULT_EMERGENCY_KEYWORDS = [
   'flood', 'flooding', 'fire', 'gas leak', 'gas smell', 'no heat',
