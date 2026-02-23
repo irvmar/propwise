@@ -113,6 +113,18 @@ export const SMS_TEMPLATES = {
   escalation: (tenantName: string) =>
     `Hi ${tenantName}, I'm connecting you with a member of our team who can better assist you. They'll be in touch shortly.`,
 
+  vendorSchedulePrompt: (title: string) =>
+    `Great! When can you schedule the visit for "${title}"? Reply with your proposed date and time (e.g., "Tuesday 2pm" or "March 5 at 10am").`,
+
+  vendorScheduleConfirm: (title: string, scheduledDate: string) =>
+    `Confirmed! You're scheduled for "${title}" on ${scheduledDate}. Please contact the tenant at the time of visit.`,
+
+  tenantScheduleNotify: (tenantName: string, title: string, vendorName: string, scheduledDate: string) =>
+    `Hi ${tenantName}, ${vendorName} is scheduled to address "${title}" on ${scheduledDate}. Please ensure access to the unit. Reply if you need to reschedule.`,
+
+  workOrderScheduled: (tenantName: string, title: string, scheduledDate: string) =>
+    `Hi ${tenantName}, your maintenance request "${title}" has been scheduled for ${scheduledDate}. We'll send a reminder beforehand.`,
+
   optOutConfirmation: () =>
     'You have been unsubscribed from PropWise messages. Text START to re-subscribe.',
 

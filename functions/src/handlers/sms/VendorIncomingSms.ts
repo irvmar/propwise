@@ -153,12 +153,12 @@ export async function handleVendorSms(
 ): Promise<void> {
   const normalizedBody = body.trim().toUpperCase();
 
-  // Find the most recent work order assigned to this vendor that is awaiting response
+  // Find the most recent work order assigned to this vendor that is awaiting response or scheduling
   const woSnap = await db
     .collection(COLLECTIONS.workOrders)
     .where('vendorId', '==', vendor.id)
-    .where('status', '==', 'vendor_contacted')
-    .orderBy('vendorContactedAt', 'desc')
+    .where('status', 'in', ['vendor_contacted', 'assigned'])
+    .orderBy('updatedAt', 'desc')
     .limit(1)
     .get();
 
@@ -217,13 +217,13 @@ export async function handleVendorSms(
       );
     }
 
-    // Confirm receipt to vendor
+    // Prompt vendor for scheduling
     await sendSms(
       fromPhone,
-      `Thank you! You've been assigned to: "${workOrder.title}". Please contact the tenant to schedule.`,
+      SMS_TEMPLATES.vendorSchedulePrompt(workOrder.title),
     );
 
-    logger.info('Vendor accepted work order', {
+    logger.info('Vendor accepted work order — scheduling prompted', {
       workOrderId: woDoc.id,
       vendorId: vendor.id,
     });
@@ -264,6 +264,55 @@ export async function handleVendorSms(
       });
     }
 
+    return;
+  }
+
+  // ── Scheduling proposal (vendor accepted, now proposing a time) ──────
+  if (workOrder.status === 'assigned') {
+    // Treat any freetext on an assigned WO as a scheduling proposal
+    const scheduledDate = body.trim();
+
+    await woDoc.ref.update({
+      status: 'scheduled',
+      scheduledDate,
+      updatedAt: Timestamp.now(),
+      notes: FieldValue.arrayUnion({
+        id: db.collection('_').doc().id,
+        authorId: vendor.id,
+        authorName: vendor.name,
+        body: `Vendor proposed schedule: ${scheduledDate}`,
+        createdAt: Timestamp.now(),
+      }),
+    });
+
+    // Confirm to vendor
+    await sendSms(
+      fromPhone,
+      SMS_TEMPLATES.vendorScheduleConfirm(workOrder.title, scheduledDate),
+    );
+
+    // Notify tenant
+    const tenantDoc = await db.collection(COLLECTIONS.tenants).doc(workOrder.tenantId).get();
+    if (tenantDoc.exists) {
+      const tenant = tenantDoc.data()!;
+      if (!tenant.smsOptedOut) {
+        await sendSms(
+          tenant.phone,
+          SMS_TEMPLATES.tenantScheduleNotify(
+            tenant.firstName,
+            workOrder.title,
+            vendor.name,
+            scheduledDate,
+          ),
+        );
+      }
+    }
+
+    logger.info('Work order scheduled by vendor', {
+      workOrderId: woDoc.id,
+      vendorId: vendor.id,
+      scheduledDate,
+    });
     return;
   }
 

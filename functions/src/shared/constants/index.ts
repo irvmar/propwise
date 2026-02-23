@@ -80,17 +80,23 @@ export const PLAN_TIERS: Record<PlanTier, PlanConfig> = {
   },
 };
 
-// Replace these placeholder IDs with real Stripe price IDs from your Stripe dashboard
+// Stripe price IDs — set via environment variables:
+//   STRIPE_PRICE_GROWTH, STRIPE_PRICE_PROFESSIONAL, STRIPE_PRICE_ENTERPRISE
+// Falls back to placeholder values for local development.
+function getStripePriceId(plan: string): string {
+  return process.env[`STRIPE_PRICE_${plan.toUpperCase()}`] || `price_${plan}_monthly`;
+}
+
 export const STRIPE_PRICE_IDS: Record<string, PlanTier> = {
-  price_growth_monthly: 'growth',
-  price_professional_monthly: 'professional',
-  price_enterprise_monthly: 'enterprise',
+  [getStripePriceId('growth')]: 'growth',
+  [getStripePriceId('professional')]: 'professional',
+  [getStripePriceId('enterprise')]: 'enterprise',
 };
 
 export const PLAN_TO_STRIPE_PRICE: Partial<Record<PlanTier, string>> = {
-  growth: 'price_growth_monthly',
-  professional: 'price_professional_monthly',
-  enterprise: 'price_enterprise_monthly',
+  growth: getStripePriceId('growth'),
+  professional: getStripePriceId('professional'),
+  enterprise: getStripePriceId('enterprise'),
 };
 
 // Plan ordering for feature-gate comparisons (higher index = more features)
@@ -141,6 +147,18 @@ export const SMS_TEMPLATES = {
 
   vendorEscalationTimeout: (vendorName: string, title: string) =>
     `Vendor ${vendorName} did not respond to work order "${title}" within 2 hours. Auto-escalating.`,
+
+  vendorSchedulePrompt: (title: string) =>
+    `Great! When can you schedule the visit for "${title}"? Reply with your proposed date and time (e.g., "Tuesday 2pm" or "March 5 at 10am").`,
+
+  vendorScheduleConfirm: (title: string, scheduledDate: string) =>
+    `Confirmed! You're scheduled for "${title}" on ${scheduledDate}. Please contact the tenant at the time of visit.`,
+
+  tenantScheduleNotify: (tenantName: string, title: string, vendorName: string, scheduledDate: string) =>
+    `Hi ${tenantName}, ${vendorName} is scheduled to address "${title}" on ${scheduledDate}. Please ensure access to the unit. Reply if you need to reschedule.`,
+
+  workOrderScheduled: (tenantName: string, title: string, scheduledDate: string) =>
+    `Hi ${tenantName}, your maintenance request "${title}" has been scheduled for ${scheduledDate}. We'll send a reminder beforehand.`,
 
   optOutConfirmation: () =>
     'You have been unsubscribed from PropWise messages. Text START to re-subscribe.',
