@@ -118,9 +118,10 @@ Concentric circles showing TAM > SAM > SOM. Include a bar chart of US PM market 
 
 | Plan | Price | Target | Includes |
 |------|-------|--------|----------|
-| **Starter** | $99/month | Self-managing landlords, 10-50 units | 1 phone number, 500 AI messages/month, basic dashboard |
-| **Professional** | $299/month | PM companies, 50-200 units | 3 phone numbers, 2,500 AI messages/month, full dashboard, integrations |
-| **Enterprise** | $599+/month | Large PM companies, 200+ units | Unlimited phone numbers, unlimited messages, custom escalation rules, API access, dedicated support |
+| **Free** | $0/month | Landlords getting started, 1-5 units | 1 property, 5 units, 50 AI messages/month, basic dashboard |
+| **Growth** | $99/month | Independent landlords, 10-50 units | 3 properties, 50 units, 500 AI messages/month, knowledge base, vendor management, rent reminders |
+| **Professional** | $199/month | Growing PM companies, 50-150 units | 10 properties, 150 units, 2,000 AI messages/month, custom AI training |
+| **Enterprise** | $349/month | PM companies at scale, 150-500 units | Unlimited properties, 500 units, 5,000 AI messages/month, API access, dedicated account manager |
 
 ### Key Talking Points:
 - **Net Revenue Retention Target:** 120%+ (driven by portfolio growth = more units = more messages = plan upgrades)

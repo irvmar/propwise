@@ -15,8 +15,8 @@ const plans = [
     desc: 'For landlords just getting started',
     cta: 'Get Started Free',
     features: [
-      { text: 'Up to 2 properties', included: true },
-      { text: 'Up to 10 units', included: true },
+      { text: 'Up to 1 property', included: true },
+      { text: 'Up to 5 units', included: true },
       { text: '50 messages/month', included: true },
       { text: 'AI SMS Agent', included: true },
       { text: 'Work Order Management', included: true },
@@ -37,8 +37,8 @@ const plans = [
     desc: 'For independent landlords scaling up',
     cta: 'Get Started',
     features: [
-      { text: 'Up to 5 properties', included: true },
-      { text: 'Up to 25 units', included: true },
+      { text: 'Up to 3 properties', included: true },
+      { text: 'Up to 50 units', included: true },
       { text: '500 messages/month', included: true },
       { text: 'AI SMS Agent', included: true },
       { text: 'Work Order Management', included: true },
@@ -59,8 +59,8 @@ const plans = [
     desc: 'For growing portfolios that need full automation',
     cta: 'Get Started',
     features: [
-      { text: 'Up to 20 properties', included: true },
-      { text: 'Up to 100 units', included: true },
+      { text: 'Up to 10 properties', included: true },
+      { text: 'Up to 150 units', included: true },
       { text: '2,000 messages/month', included: true },
       { text: 'AI SMS Agent', included: true },
       { text: 'Work Order Management', included: true },
@@ -82,8 +82,8 @@ const plans = [
     cta: 'Get Started',
     features: [
       { text: 'Unlimited properties', included: true },
-      { text: 'Unlimited units', included: true },
-      { text: 'Unlimited messages', included: true },
+      { text: 'Up to 500 units', included: true },
+      { text: '5,000 messages/month', included: true },
       { text: 'AI SMS Agent', included: true },
       { text: 'Work Order Management', included: true },
       { text: 'Full Dashboard', included: true },

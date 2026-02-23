@@ -284,9 +284,9 @@ export default function LandingPage() {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24 }}>
           {[
-            { name: 'Starter', price: 99, desc: 'For independent landlords', units: '25 units', messages: '500 msgs/mo', highlight: false },
-            { name: 'Professional', price: 199, desc: 'For growing portfolios', units: '100 units', messages: '2,000 msgs/mo', highlight: true },
-            { name: 'Enterprise', price: 349, desc: 'For management companies', units: 'Unlimited', messages: 'Unlimited', highlight: false },
+            { name: 'Growth', price: 99, desc: 'For independent landlords', units: '3 properties · 50 units', messages: '500 msgs/mo', highlight: false },
+            { name: 'Professional', price: 199, desc: 'For growing portfolios', units: '10 properties · 150 units', messages: '2,000 msgs/mo', highlight: true },
+            { name: 'Enterprise', price: 349, desc: 'For management companies', units: 'Unlimited properties · 500 units', messages: '5,000 msgs/mo', highlight: false },
           ].map((plan, i) => (
             <div key={plan.name} className={`reveal reveal-delay-${i + 1}`} style={{
               background: plan.highlight ? 'var(--pw-ink)' : 'white',
@@ -309,7 +309,7 @@ export default function LandingPage() {
                 <span style={{ fontSize: 14, opacity: 0.6 }}>/month</span>
               </div>
               <div style={{ fontSize: 14, lineHeight: 2, opacity: 0.8 }}>
-                <div>Up to {plan.units}</div>
+                <div>{plan.units}</div>
                 <div>{plan.messages}</div>
                 <div>AI SMS Agent</div>
                 <div>Dashboard</div>
