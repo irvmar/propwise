@@ -220,7 +220,9 @@ ${recentAngles.slice(0, 5).map((a) => `- ${a}`).join('\n') || '(none yet)'}`;
 
   try {
     const response = await generateResponse(systemPrompt, userMessage, undefined, { maxTokens });
-    const parsed = JSON.parse(response.text);
+    // Strip markdown code fences that Claude sometimes wraps around JSON
+    const cleaned = response.text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+    const parsed = JSON.parse(cleaned);
     if (parsed.content && Array.isArray(parsed.hashtags)) return parsed;
   } catch (err) {
     logger.warn('Failed to parse social post from Claude', {

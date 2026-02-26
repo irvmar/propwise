@@ -172,7 +172,8 @@ Make it feel genuine and specific to this lead. Don't just do find-and-replace â
 
   try {
     const response = await generateResponse(systemPrompt, userMessage, undefined, { maxTokens: 1500 });
-    const parsed = JSON.parse(response.text);
+    const cleaned = response.text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+    const parsed = JSON.parse(cleaned);
     if (parsed.subject && parsed.html) {
       return { subject: parsed.subject, html: parsed.html + footer };
     }
