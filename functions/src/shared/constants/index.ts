@@ -220,6 +220,7 @@ export const COLLECTIONS = {
   socialPosts: 'socialPosts',
   campaigns: 'campaigns',
   marketingSettings: 'marketingSettings',
+  blogDrafts: 'blogDrafts',
 } as const;
 
 /**
