@@ -145,6 +145,53 @@ export async function callWithTools(
   return response;
 }
 
+// ─── Structured Output (tool use for guaranteed JSON) ──────────────────────────
+
+export async function generateStructured<T>(
+  systemPrompt: string,
+  userMessage: string,
+  schema: { name: string; description: string; input_schema: Record<string, unknown> },
+  options?: { maxTokens?: number },
+): Promise<{ data: T; inputTokens: number; outputTokens: number }> {
+  const anthropic = getClient();
+
+  const tool: Anthropic.Tool = {
+    name: schema.name,
+    description: schema.description,
+    input_schema: schema.input_schema as Anthropic.Tool.InputSchema,
+  };
+
+  logger.info('Calling Claude API (structured)', {
+    toolName: schema.name,
+    systemPromptLength: systemPrompt.length,
+  });
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: options?.maxTokens ?? 1024,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userMessage }],
+    tools: [tool],
+    tool_choice: { type: 'tool', name: schema.name },
+  });
+
+  const toolBlock = response.content.find((b) => b.type === 'tool_use');
+  if (!toolBlock || toolBlock.type !== 'tool_use') {
+    throw new Error('Claude did not return structured output');
+  }
+
+  logger.info('Claude structured response received', {
+    inputTokens: response.usage.input_tokens,
+    outputTokens: response.usage.output_tokens,
+  });
+
+  return {
+    data: toolBlock.input as T,
+    inputTokens: response.usage.input_tokens,
+    outputTokens: response.usage.output_tokens,
+  };
+}
+
 // ─── Legacy Functions (backward compatibility) ────────────────────────────────
 
 export async function generateResponse(

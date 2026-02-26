@@ -6,7 +6,7 @@ import { generateBlogDraftSchema } from '../../shared/validators';
 import { getMarketingAdminEmails } from '../../shared/constants';
 
 export const generateBlogDraft = onCall(
-  { timeoutSeconds: 120 },
+  { timeoutSeconds: 540, memory: '512MiB' },
   async (request) => {
     if (!request.auth) throw new HttpsError('unauthenticated', 'Must be signed in');
     const email = request.auth.token.email;

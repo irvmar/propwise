@@ -2,7 +2,7 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { logger } from '../../utils/logger';
 import { COLLECTIONS } from '../../shared/constants';
-import { generateResponse } from '../../services/claude.service';
+import { generateStructured } from '../../services/claude.service';
 import { sendEmail } from '../../services/resend.service';
 
 const db = getFirestore();
@@ -20,8 +20,8 @@ export const processEmailDrips = onSchedule(
   {
     schedule: '30 8 * * 1-5',
     timeZone: 'America/New_York',
-    timeoutSeconds: 300,
-    memory: '512MiB',
+    timeoutSeconds: 540,
+    memory: '1GiB',
   },
   async () => {
     const now = Timestamp.now();
@@ -170,15 +170,31 @@ Body template: ${step.bodyTemplate}
 
 Make it feel genuine and specific to this lead. Don't just do find-and-replace — rewrite sections to feel natural for someone managing ~${portfolioSize} units.`;
 
+  const emailSchema = {
+    name: 'create_email',
+    description: 'Create a personalized cold email with subject and HTML body',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        subject: { type: 'string', description: 'Email subject line, under 60 characters' },
+        html: { type: 'string', description: 'Email body in simple HTML with <p> tags' },
+      },
+      required: ['subject', 'html'],
+    },
+  };
+
   try {
-    const response = await generateResponse(systemPrompt, userMessage, undefined, { maxTokens: 1500 });
-    const cleaned = response.text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
-    const parsed = JSON.parse(cleaned);
-    if (parsed.subject && parsed.html) {
-      return { subject: parsed.subject, html: parsed.html + footer };
+    const { data } = await generateStructured<{ subject: string; html: string }>(
+      systemPrompt,
+      userMessage,
+      emailSchema,
+      { maxTokens: 1500 },
+    );
+    if (data.subject && data.html) {
+      return { subject: data.subject, html: data.html + footer };
     }
   } catch (err) {
-    logger.warn('Claude personalization parse failed, falling back to template replacement', {
+    logger.warn('Claude personalization failed, falling back to template replacement', {
       error: err instanceof Error ? err.message : 'Unknown',
     });
   }

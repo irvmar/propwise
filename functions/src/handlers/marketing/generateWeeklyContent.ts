@@ -3,7 +3,7 @@ import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { logger } from '../../utils/logger';
 import { COLLECTIONS, getMarketingAdminEmails } from '../../shared/constants';
-import { generateResponse } from '../../services/claude.service';
+import { generateStructured } from '../../services/claude.service';
 import { generatePostImage } from '../../services/imagen.service';
 import type { ContentTheme, SocialPlatform } from '../../shared/types';
 
@@ -142,8 +142,8 @@ export const generateWeeklyContent = onSchedule(
   {
     schedule: '0 20 * * 0',
     timeZone: 'America/New_York',
-    timeoutSeconds: 300,
-    memory: '512MiB',
+    timeoutSeconds: 540,
+    memory: '1GiB',
   },
   async () => {
     await runWeeklyContentGeneration();
@@ -153,7 +153,7 @@ export const generateWeeklyContent = onSchedule(
 // ─── Manual trigger (callable from dashboard) ───────────────────────
 
 export const triggerWeeklyContent = onCall(
-  { timeoutSeconds: 300, memory: '512MiB' },
+  { timeoutSeconds: 540, memory: '1GiB' },
   async (request) => {
     if (!request.auth) throw new HttpsError('unauthenticated', 'Must be signed in');
     const email = request.auth.token.email;
@@ -175,6 +175,19 @@ function buildImagePrompt(postContent: string, platform: SocialPlatform, categor
 
 // ─── Post text generator ────────────────────────────────────────────
 
+const socialPostSchema = {
+  name: 'create_social_post',
+  description: 'Create a social media post with content and hashtags',
+  input_schema: {
+    type: 'object' as const,
+    properties: {
+      content: { type: 'string', description: 'The full post text' },
+      hashtags: { type: 'array', items: { type: 'string' }, description: 'Hashtags for the post' },
+    },
+    required: ['content', 'hashtags'],
+  },
+};
+
 async function generatePost(
   platform: SocialPlatform,
   category: string,
@@ -192,7 +205,7 @@ async function generatePost(
     ? 'LinkedIn post: 150-300 words. Include 3-5 relevant hashtags. Use line breaks for readability.'
     : 'Twitter post: MAXIMUM 280 characters including hashtags. Include 1-2 hashtags. Be punchy and direct.';
 
-  const maxTokens = platform === 'linkedin' ? 800 : 200;
+  const maxTokens = platform === 'linkedin' ? 800 : 300;
 
   const systemPrompt = `You are the CEO/founder of PropWise, an AI-powered property management communication tool. You write social media posts.
 
@@ -207,9 +220,7 @@ RULES:
 - DON'T use "we" language like "we're excited to announce." Write in first person as a founder who gets it.
 - Keep it real. Reference specific PM scenarios: 2 AM texts, maintenance request floods, tenant ghosting, rent collection headaches.
 
-${platformConstraints}
-
-Output ONLY valid JSON: {"content": "...", "hashtags": ["...", "..."]}`;
+${platformConstraints}`;
 
   const userMessage = `Write a ${platform} post.
 Category: ${category}
@@ -219,13 +230,15 @@ Recent angles to AVOID repeating:
 ${recentAngles.slice(0, 5).map((a) => `- ${a}`).join('\n') || '(none yet)'}`;
 
   try {
-    const response = await generateResponse(systemPrompt, userMessage, undefined, { maxTokens });
-    // Strip markdown code fences that Claude sometimes wraps around JSON
-    const cleaned = response.text.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
-    const parsed = JSON.parse(cleaned);
-    if (parsed.content && Array.isArray(parsed.hashtags)) return parsed;
+    const { data } = await generateStructured<{ content: string; hashtags: string[] }>(
+      systemPrompt,
+      userMessage,
+      socialPostSchema,
+      { maxTokens },
+    );
+    if (data.content && Array.isArray(data.hashtags)) return data;
   } catch (err) {
-    logger.warn('Failed to parse social post from Claude', {
+    logger.warn('Failed to generate social post via structured output', {
       error: err instanceof Error ? err.message : 'Unknown',
     });
   }
