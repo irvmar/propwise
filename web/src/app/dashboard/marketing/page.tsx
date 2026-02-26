@@ -249,11 +249,25 @@ function LeadsTab({ stats, leads, onRefresh }: { stats: MarketingStats | null; l
   const [submitting, setSubmitting] = useState(false);
 
   const handleAddLead = async () => {
+    const trimmedName = form.name.trim();
+    const trimmedEmail = form.email.trim();
+    if (!trimmedName || !trimmedEmail) {
+      toast.error('Name and email are required');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
     setSubmitting(true);
     try {
       await httpsCallable(functions, 'addLead')({
-        ...form,
+        name: trimmedName,
+        email: trimmedEmail,
+        company: form.company.trim() || undefined,
         portfolioSize: form.portfolioSize ? parseInt(form.portfolioSize, 10) : undefined,
+        market: form.market.trim() || undefined,
+        source: 'manual',
       });
       toast.success('Lead added');
       setAddOpen(false);
@@ -370,7 +384,7 @@ function LeadsTab({ stats, leads, onRefresh }: { stats: MarketingStats | null; l
                     <Input value={form.market} onChange={(e) => setForm({ ...form, market: e.target.value })} placeholder="Austin, TX" />
                   </div>
                 </div>
-                <Button onClick={handleAddLead} disabled={submitting || !form.name || !form.email} className="w-full">
+                <Button onClick={handleAddLead} disabled={submitting || !form.name.trim() || !form.email.trim()} className="w-full">
                   {submitting ? 'Adding...' : 'Add Lead'}
                 </Button>
               </div>
@@ -735,19 +749,36 @@ function BlogTab({ blogDraft, setBlogDraft }: { blogDraft: string; setBlogDraft:
   const [generating, setGenerating] = useState(false);
 
   const handleGenerate = async () => {
-    if (!form.topic || !form.keywords) return;
+    const trimmedTopic = form.topic.trim();
+    const keywords = form.keywords.split(',').map((k) => k.trim()).filter(Boolean);
+    const wordCount = parseInt(form.wordCount, 10);
+
+    if (!trimmedTopic) {
+      toast.error('Topic is required');
+      return;
+    }
+    if (keywords.length === 0) {
+      toast.error('At least one keyword is required');
+      return;
+    }
+    if (isNaN(wordCount) || wordCount < 500 || wordCount > 3000) {
+      toast.error('Word count must be between 500 and 3000');
+      return;
+    }
+
     setGenerating(true);
     try {
       const res = await httpsCallable(functions, 'generateBlogDraft')({
-        topic: form.topic,
-        targetKeywords: form.keywords.split(',').map((k) => k.trim()).filter(Boolean),
-        angle: form.angle || undefined,
-        wordCount: parseInt(form.wordCount, 10) || 1200,
+        topic: trimmedTopic,
+        targetKeywords: keywords,
+        angle: form.angle.trim() || undefined,
+        wordCount,
       }) as { data: { mdxContent: string; tokensUsed: number } };
       setBlogDraft(res.data.mdxContent);
       toast.success(`Draft generated (${res.data.tokensUsed} tokens)`);
-    } catch {
-      toast.error('Failed to generate blog draft');
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to generate blog draft';
+      toast.error(msg);
     } finally {
       setGenerating(false);
     }
@@ -793,7 +824,7 @@ function BlogTab({ blogDraft, setBlogDraft }: { blogDraft: string; setBlogDraft:
               <Input type="number" value={form.wordCount} onChange={(e) => setForm({ ...form, wordCount: e.target.value })} />
             </div>
           </div>
-          <Button onClick={handleGenerate} disabled={generating || !form.topic || !form.keywords}>
+          <Button onClick={handleGenerate} disabled={generating || !form.topic.trim() || !form.keywords.trim()}>
             {generating ? (
               <>
                 <div className="pw-spinner-sm mr-2" />
