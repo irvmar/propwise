@@ -167,4 +167,18 @@ export const COLLECTIONS = {
   knowledgeBase: 'knowledgeBase',
   users: 'users',
   unknownMessages: 'unknownMessages',
+  leads: 'leads',
+  emailSequences: 'emailSequences',
+  emailEvents: 'emailEvents',
+  socialPosts: 'socialPosts',
+  campaigns: 'campaigns',
+  marketingSettings: 'marketingSettings',
 } as const;
+
+/**
+ * Returns authorized marketing admin emails from environment variable.
+ */
+export function getMarketingAdminEmails(): string[] {
+  const raw = process.env.MARKETING_ADMIN_EMAILS || '';
+  return raw.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+}

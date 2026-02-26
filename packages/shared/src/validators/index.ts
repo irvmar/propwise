@@ -171,3 +171,7 @@ export const archiveConversationSchema = z.object({
   conversationId: z.string().min(1),
   status: z.enum(['resolved', 'active']),
 });
+
+// ─── Marketing Schemas ──────────────────────────────────────────────
+
+export * from './marketing';

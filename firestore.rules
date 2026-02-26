@@ -79,5 +79,25 @@ service cloud.firestore {
       allow create: if request.auth != null && getUserOrg() == request.resource.data.organizationId;
       allow update, delete: if request.auth != null && getUserOrg() == resource.data.organizationId;
     }
+
+    // Marketing collections: admin SDK only (all client access through callable functions)
+    match /leads/{docId} {
+      allow read, write: if false;
+    }
+    match /emailSequences/{docId} {
+      allow read, write: if false;
+    }
+    match /emailEvents/{docId} {
+      allow read, write: if false;
+    }
+    match /socialPosts/{docId} {
+      allow read, write: if false;
+    }
+    match /campaigns/{docId} {
+      allow read, write: if false;
+    }
+    match /marketingSettings/{docId} {
+      allow read, write: if false;
+    }
   }
 }

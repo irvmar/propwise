@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { doc, onSnapshot } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { useAuth } from '@/contexts/auth-context';
 import { signOut } from 'firebase/auth';
-import { auth, firestore } from '@/lib/firebase';
+import { auth, firestore, functions } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -22,6 +23,7 @@ const navItems = [
   { href: '/dashboard/tenants', label: 'Tenants', icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z' },
   { href: '/dashboard/vendors', label: 'Vendors', icon: 'M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z' },
   { href: '/dashboard/knowledge-base', label: 'Knowledge Base', icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253' },
+  { href: '/dashboard/marketing', label: 'Marketing', icon: 'M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z' },
   { href: '/dashboard/settings', label: 'Settings', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z M15 12a3 3 0 11-6 0 3 3 0 016 0z' },
 ];
 
@@ -31,12 +33,20 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [orgPlan, setOrgPlan] = useState<string>('starter');
+  const [isMarketingAdmin, setIsMarketingAdmin] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
       router.push('/auth/login');
     }
   }, [user, loading, router]);
+
+  // Check marketing access via backend — no emails in frontend
+  useEffect(() => {
+    if (!user) return;
+    const check = httpsCallable<unknown, { authorized: boolean }>(functions, 'checkMarketingAccess');
+    check().then((res) => setIsMarketingAdmin(res.data.authorized)).catch(() => {});
+  }, [user]);
 
   // Listen to org plan in real-time
   useEffect(() => {
@@ -105,7 +115,11 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
         {/* Nav */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
+          {navItems.filter((item) => {
+            // Hide Marketing nav for non-admin users
+            if (item.href === '/dashboard/marketing') return isMarketingAdmin;
+            return true;
+          }).map((item) => {
             const isGated = !isGrowthOrAbove && GROWTH_GATED_PATHS.includes(item.href);
             return (
               <Link

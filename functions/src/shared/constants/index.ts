@@ -214,4 +214,20 @@ export const COLLECTIONS = {
   knowledgeBase: 'knowledgeBase',
   users: 'users',
   unknownMessages: 'unknownMessages',
+  leads: 'leads',
+  emailSequences: 'emailSequences',
+  emailEvents: 'emailEvents',
+  socialPosts: 'socialPosts',
+  campaigns: 'campaigns',
+  marketingSettings: 'marketingSettings',
 } as const;
+
+/**
+ * Returns authorized marketing admin emails from environment variable.
+ * Set via: firebase functions:secrets:set MARKETING_ADMIN_EMAILS
+ * Value format: comma-separated emails (e.g. "a@b.com,c@d.com")
+ */
+export function getMarketingAdminEmails(): string[] {
+  const raw = process.env.MARKETING_ADMIN_EMAILS || '';
+  return raw.split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+}

@@ -17,8 +17,28 @@ const dmSerif = DM_Serif_Display({
 });
 
 export const metadata: Metadata = {
-  title: "PropWise AI — Smart Property Management",
-  description: "SMS-first AI agent for property managers. Automate tenant communication, maintenance coordination, and rent reminders.",
+  metadataBase: new URL('https://propwise.ai'),
+  title: {
+    default: 'PropWise AI — Smart Property Management',
+    template: '%s | PropWise AI',
+  },
+  description: 'SMS-first AI agent for property managers. Automate tenant communication, maintenance coordination, and rent reminders.',
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    siteName: 'PropWise AI',
+    title: 'PropWise AI — Smart Property Management',
+    description: 'SMS-first AI agent for property managers. Automate tenant communication, maintenance coordination, and rent reminders.',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'PropWise AI — Smart Property Management',
+    description: 'SMS-first AI agent for property managers. Automate tenant communication, maintenance coordination, and rent reminders.',
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({

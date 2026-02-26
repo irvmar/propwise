@@ -44,3 +44,14 @@ export { resetMonthlyCounters } from './handlers/scheduled/resetMonthlyCounters'
 // Firestore Triggers
 export { onWorkOrderCreated } from './handlers/scheduled/onWorkOrderCreated';
 export { onTenantCreated } from './handlers/scheduled/onTenantCreated';
+
+// Marketing
+export { addLead, importLeads, getLeads, getMarketingStats, checkMarketingAccess } from './handlers/marketing/leads';
+export { seedEmailSequence } from './handlers/marketing/seedSequence';
+export { processEmailDrips } from './handlers/marketing/processEmailDrips';
+export { resendWebhook } from './handlers/marketing/resendWebhook';
+export { unsubscribeEmail } from './handlers/marketing/unsubscribe';
+export { generateWeeklyContent, triggerWeeklyContent } from './handlers/marketing/generateWeeklyContent';
+export { getSocialPosts, approvePost, rejectPost, publishApprovedPosts } from './handlers/marketing/socialPosts';
+export { generateBlogDraft } from './handlers/marketing/generateBlogDraft';
+export { getMarketingSettings, updateMarketingSettings } from './handlers/marketing/settings';
