@@ -45,6 +45,7 @@ interface SocialPost {
   dayOfWeek: string;
   status: string;
   hasImage?: boolean;
+  imageUrl?: string | null;
   scheduledFor?: { _seconds: number };
   publishedAt?: { _seconds: number };
 }
@@ -143,6 +144,8 @@ export default function MarketingPage() {
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [blogDraft, setBlogDraft] = useState<string>('');
+  const [blogDraftSaved, setBlogDraftSaved] = useState(true);
+  const [activeTab, setActiveTab] = useState('leads');
 
   const loadData = useCallback(async () => {
     try {
@@ -162,6 +165,14 @@ export default function MarketingPage() {
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  const handleTabChange = (newTab: string) => {
+    if (activeTab === 'blog' && blogDraft && !blogDraftSaved) {
+      const confirmed = window.confirm('You have an unsaved blog draft. Switch tabs anyway?');
+      if (!confirmed) return;
+    }
+    setActiveTab(newTab);
+  };
 
   if (authLoading || isAuthorized === null || loading) {
     return (
@@ -191,7 +202,7 @@ export default function MarketingPage() {
         </Button>
       </div>
 
-      <Tabs defaultValue="leads" className="space-y-6">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
           <TabsList className="bg-white border border-[var(--pw-border)] shadow-[0_1px_3px_rgba(26,23,20,0.04)] h-auto p-1 w-full sm:w-auto">
             <TabsTrigger value="leads" className="gap-1.5 px-3 py-2 text-xs sm:text-sm data-[state=active]:bg-[var(--pw-ink)] data-[state=active]:text-white data-[state=active]:shadow-none transition-all duration-200">
@@ -230,7 +241,7 @@ export default function MarketingPage() {
         </TabsContent>
 
         <TabsContent value="blog" className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <BlogTab blogDraft={blogDraft} setBlogDraft={setBlogDraft} />
+          <BlogTab blogDraft={blogDraft} setBlogDraft={(v) => { setBlogDraft(v); setBlogDraftSaved(false); }} onDraftSaved={() => setBlogDraftSaved(true)} />
         </TabsContent>
 
         <TabsContent value="analytics" className="animate-in fade-in slide-in-from-bottom-2 duration-300">
@@ -243,10 +254,30 @@ export default function MarketingPage() {
 
 // ─── Leads Tab ──────────────────────────────────────────────────────
 
+const LEAD_STATUSES = [
+  { value: '', label: 'All Statuses' },
+  { value: 'new', label: 'New' },
+  { value: 'nurturing', label: 'Nurturing' },
+  { value: 'hot', label: 'Hot' },
+  { value: 'converted', label: 'Converted' },
+  { value: 'unsubscribed', label: 'Unsubscribed' },
+  { value: 'bounced', label: 'Bounced' },
+];
+
 function LeadsTab({ stats, leads, onRefresh }: { stats: MarketingStats | null; leads: Lead[]; onRefresh: () => void }) {
   const [addOpen, setAddOpen] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', company: '', portfolioSize: '', market: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('');
+  const [filteredLeads, setFilteredLeads] = useState<Lead[]>(leads);
+
+  useEffect(() => {
+    if (!statusFilter) {
+      setFilteredLeads(leads);
+    } else {
+      setFilteredLeads(leads.filter((l) => l.status === statusFilter));
+    }
+  }, [leads, statusFilter]);
 
   const handleAddLead = async () => {
     const trimmedName = form.name.trim();
@@ -348,9 +379,20 @@ function LeadsTab({ stats, leads, onRefresh }: { stats: MarketingStats | null; l
 
       {/* Actions bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <p className="text-sm text-[var(--pw-slate)] font-body">
-          {leads.length} lead{leads.length !== 1 ? 's' : ''} in pipeline
-        </p>
+        <div className="flex items-center gap-3">
+          <p className="text-sm text-[var(--pw-slate)] font-body">
+            {filteredLeads.length} lead{filteredLeads.length !== 1 ? 's' : ''}{statusFilter ? ` (${statusFilter})` : ' in pipeline'}
+          </p>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="text-sm border border-[var(--pw-border)] rounded-md px-2.5 py-1.5 bg-white text-[var(--pw-ink)] font-body focus:outline-none focus:ring-2 focus:ring-[var(--pw-accent)]/20 focus:border-[var(--pw-accent)]"
+          >
+            {LEAD_STATUSES.map((s) => (
+              <option key={s.value} value={s.value}>{s.label}</option>
+            ))}
+          </select>
+        </div>
         <div className="flex gap-2">
           <Dialog open={addOpen} onOpenChange={setAddOpen}>
             <DialogTrigger asChild>
@@ -417,7 +459,7 @@ function LeadsTab({ stats, leads, onRefresh }: { stats: MarketingStats | null; l
               </TableRow>
             </TableHeader>
             <TableBody>
-              {leads.map((lead) => (
+              {filteredLeads.map((lead) => (
                 <TableRow key={lead.id} className="group transition-colors hover:bg-[var(--pw-warm)]/40">
                   <TableCell className="font-medium text-[var(--pw-ink)]">
                     <div>{lead.name}</div>
@@ -439,7 +481,7 @@ function LeadsTab({ stats, leads, onRefresh }: { stats: MarketingStats | null; l
                   <TableCell className="text-sm text-[var(--pw-slate)] hidden lg:table-cell">{formatDate(lead.lastEmailAt)}</TableCell>
                 </TableRow>
               ))}
-              {leads.length === 0 && (
+              {filteredLeads.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="h-32 text-center">
                     <div className="flex flex-col items-center gap-2">
@@ -555,13 +597,18 @@ function SocialTab({ posts, onRefresh }: { posts: SocialPost[]; onRefresh: () =>
     setGenerating(true);
     try {
       // Uses the onCall wrapper (triggerWeeklyContent), not the onSchedule function
-      await httpsCallable(functions, 'triggerWeeklyContent')();
-      toast.success('Weekly content generated with AI images');
-      onRefresh();
+      // Set 10-minute timeout — generation takes ~3-4 min for 8 posts with images
+      const res = await httpsCallable<unknown, { postCount: number; campaignWeek: string; skipped?: boolean }>(functions, 'triggerWeeklyContent', { timeout: 600000 })();
+      if (res.data.skipped) {
+        toast.info(`Content already exists for week ${res.data.campaignWeek}. Delete existing posts first to regenerate.`);
+      } else {
+        toast.success(`Generated ${res.data.postCount} posts for week ${res.data.campaignWeek}`);
+      }
     } catch {
-      toast.error('Failed to generate content');
+      toast.error('Generation may still be running in the background. Refreshing...');
     } finally {
       setGenerating(false);
+      onRefresh();
     }
   };
 
@@ -587,6 +634,17 @@ function SocialTab({ posts, onRefresh }: { posts: SocialPost[]; onRefresh: () =>
     }
   };
 
+  const handleDelete = async (postId: string) => {
+    if (!confirm('Delete this post permanently?')) return;
+    try {
+      await httpsCallable(functions, 'deletePost')({ postId });
+      toast.success('Post deleted');
+      onRefresh();
+    } catch {
+      toast.error('Failed to delete post');
+    }
+  };
+
   const draftCount = posts.filter(p => p.status === 'draft').length;
   const publishedCount = posts.filter(p => p.status === 'published').length;
 
@@ -602,7 +660,7 @@ function SocialTab({ posts, onRefresh }: { posts: SocialPost[]; onRefresh: () =>
                 <p className="text-sm text-[var(--pw-slate)] font-body mt-0.5">
                   {posts.length} post{posts.length !== 1 ? 's' : ''} total
                   {draftCount > 0 && <span className="ml-1">&middot; {draftCount} pending review</span>}
-                  {publishedCount > 0 && <span className="ml-1">&middot; {publishedCount} published</span>}
+                  {publishedCount > 0 && <span className="ml-1">&middot; {publishedCount} ready to post</span>}
                 </p>
               </div>
             </div>
@@ -646,6 +704,16 @@ function SocialTab({ posts, onRefresh }: { posts: SocialPost[]; onRefresh: () =>
         </CardContent>
       </Card>
 
+      {/* Manual publishing notice */}
+      {posts.length > 0 && (
+        <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-50 border border-blue-100 text-blue-800">
+          <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <p className="text-xs font-body">
+            Posts are generated as a content calendar. Use the <strong>Copy</strong> button on each post to copy the text, then paste it directly into LinkedIn or X/Twitter.
+          </p>
+        </div>
+      )}
+
       {/* Posts grid */}
       <div className="grid gap-4 md:grid-cols-2">
         {posts.map((post) => (
@@ -680,6 +748,13 @@ function SocialTab({ posts, onRefresh }: { posts: SocialPost[]; onRefresh: () =>
                 <span className="text-xs text-[var(--pw-slate)] ml-auto font-body">{post.dayOfWeek}</span>
               </div>
 
+              {/* Image thumbnail */}
+              {post.imageUrl && (
+                <div className="mb-3 rounded-lg overflow-hidden border border-[var(--pw-border)]">
+                  <img src={post.imageUrl} alt="Post image" className="w-full h-32 object-cover" />
+                </div>
+              )}
+
               {/* Content */}
               <p className="text-sm font-body text-[var(--pw-ink)] mb-3 line-clamp-4 leading-relaxed">{post.content}</p>
 
@@ -706,17 +781,36 @@ function SocialTab({ posts, onRefresh }: { posts: SocialPost[]; onRefresh: () =>
                 </div>
               )}
               {post.status === 'approved' && (
-                <div className="flex items-center gap-2 pt-2 border-t border-[var(--pw-border)]">
-                  <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  <p className="text-xs text-[var(--pw-slate)] font-body">Scheduled: {formatDate(post.scheduledFor)}</p>
+                <div className="flex items-center justify-between pt-2 border-t border-[var(--pw-border)]">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <p className="text-xs text-[var(--pw-slate)] font-body">Scheduled: {formatDate(post.scheduledFor)}</p>
+                  </div>
+                  <Button size="sm" variant="outline" className="border-[var(--pw-border)] h-7 text-xs px-2" onClick={() => { navigator.clipboard.writeText(post.content + '\n\n' + post.hashtags.join(' ')); toast.success('Post copied to clipboard'); }}>
+                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                    Copy
+                  </Button>
                 </div>
               )}
               {post.status === 'published' && (
-                <div className="flex items-center gap-2 pt-2 border-t border-[var(--pw-border)]">
-                  <svg className="w-4 h-4 text-[var(--pw-sage)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                  <p className="text-xs text-[var(--pw-sage)] font-body font-medium">Published: {formatDate(post.publishedAt)}</p>
+                <div className="flex items-center justify-between pt-2 border-t border-[var(--pw-border)]">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4 text-[var(--pw-sage)]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <p className="text-xs text-[var(--pw-sage)] font-body font-medium">Ready to post &middot; {formatDate(post.publishedAt)}</p>
+                  </div>
+                  <Button size="sm" variant="outline" className="border-[var(--pw-border)] h-7 text-xs px-2" onClick={() => { navigator.clipboard.writeText(post.content + '\n\n' + post.hashtags.join(' ')); toast.success('Post copied to clipboard'); }}>
+                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                    Copy
+                  </Button>
                 </div>
               )}
+              {/* Delete button */}
+              <div className={`flex justify-end ${post.status !== 'draft' && post.status !== 'approved' && post.status !== 'published' ? 'pt-2 border-t border-[var(--pw-border)]' : 'mt-2'}`}>
+                <Button size="sm" variant="ghost" className="h-7 text-xs px-2 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => handleDelete(post.id)}>
+                  <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  Delete
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}
@@ -744,9 +838,36 @@ function SocialTab({ posts, onRefresh }: { posts: SocialPost[]; onRefresh: () =>
 
 // ─── Blog Tab ───────────────────────────────────────────────────────
 
-function BlogTab({ blogDraft, setBlogDraft }: { blogDraft: string; setBlogDraft: (v: string) => void }) {
+interface SavedBlogDraft {
+  id: string;
+  topic: string;
+  targetKeywords: string[];
+  mdxContent: string;
+  status: string;
+  tokensUsed: number;
+  createdAt: { _seconds: number };
+}
+
+function BlogTab({ blogDraft, setBlogDraft, onDraftSaved }: { blogDraft: string; setBlogDraft: (v: string) => void; onDraftSaved: () => void }) {
   const [form, setForm] = useState({ topic: '', keywords: '', angle: '', wordCount: '1200' });
   const [generating, setGenerating] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savedDrafts, setSavedDrafts] = useState<SavedBlogDraft[]>([]);
+  const [loadingDrafts, setLoadingDrafts] = useState(true);
+  const [lastGeneratedMeta, setLastGeneratedMeta] = useState<{ topic: string; keywords: string[]; angle?: string; wordCount: number; tokensUsed: number } | null>(null);
+
+  const loadDrafts = useCallback(async () => {
+    try {
+      const res = await httpsCallable(functions, 'getBlogDrafts')();
+      setSavedDrafts(res.data as SavedBlogDraft[]);
+    } catch {
+      // silently fail — drafts list is secondary
+    } finally {
+      setLoadingDrafts(false);
+    }
+  }, []);
+
+  useEffect(() => { loadDrafts(); }, [loadDrafts]);
 
   const handleGenerate = async () => {
     const trimmedTopic = form.topic.trim();
@@ -775,6 +896,7 @@ function BlogTab({ blogDraft, setBlogDraft }: { blogDraft: string; setBlogDraft:
         wordCount,
       }) as { data: { mdxContent: string; tokensUsed: number } };
       setBlogDraft(res.data.mdxContent);
+      setLastGeneratedMeta({ topic: trimmedTopic, keywords, angle: form.angle.trim() || undefined, wordCount, tokensUsed: res.data.tokensUsed });
       toast.success(`Draft generated (${res.data.tokensUsed} tokens)`);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to generate blog draft';
@@ -784,8 +906,41 @@ function BlogTab({ blogDraft, setBlogDraft }: { blogDraft: string; setBlogDraft:
     }
   };
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(blogDraft);
+  const handleSave = async () => {
+    if (!blogDraft || !lastGeneratedMeta) return;
+    setSaving(true);
+    try {
+      await httpsCallable(functions, 'saveBlogDraft')({
+        topic: lastGeneratedMeta.topic,
+        targetKeywords: lastGeneratedMeta.keywords,
+        angle: lastGeneratedMeta.angle,
+        wordCount: lastGeneratedMeta.wordCount,
+        mdxContent: blogDraft,
+        tokensUsed: lastGeneratedMeta.tokensUsed,
+      });
+      toast.success('Draft saved');
+      setLastGeneratedMeta(null);
+      onDraftSaved();
+      loadDrafts();
+    } catch {
+      toast.error('Failed to save draft');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteDraft = async (draftId: string) => {
+    try {
+      await httpsCallable(functions, 'deleteBlogDraft')({ draftId });
+      toast.success('Draft deleted');
+      loadDrafts();
+    } catch {
+      toast.error('Failed to delete draft');
+    }
+  };
+
+  const handleCopy = (content?: string) => {
+    navigator.clipboard.writeText(content || blogDraft);
     toast.success('MDX copied to clipboard');
   };
 
@@ -854,12 +1009,31 @@ function BlogTab({ blogDraft, setBlogDraft }: { blogDraft: string; setBlogDraft:
                 </div>
                 <CardTitle className="text-base font-heading text-[var(--pw-ink)]">Generated Draft</CardTitle>
               </div>
-              <Button size="sm" variant="outline" className="border-[var(--pw-border)]" onClick={handleCopy}>
-                <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                </svg>
-                Copy MDX
-              </Button>
+              <div className="flex gap-2">
+                {lastGeneratedMeta && (
+                  <Button size="sm" onClick={handleSave} disabled={saving}>
+                    {saving ? (
+                      <>
+                        <div className="pw-spinner-sm mr-1.5" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                        </svg>
+                        Save Draft
+                      </>
+                    )}
+                  </Button>
+                )}
+                <Button size="sm" variant="outline" className="border-[var(--pw-border)]" onClick={() => handleCopy()}>
+                  <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                  </svg>
+                  Copy MDX
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
@@ -869,6 +1043,67 @@ function BlogTab({ blogDraft, setBlogDraft }: { blogDraft: string; setBlogDraft:
           </CardContent>
         </Card>
       )}
+
+      {/* Saved Drafts */}
+      <Card className="border-[var(--pw-border)] shadow-[0_2px_8px_rgba(26,23,20,0.04)]">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-[var(--pw-warm)] flex items-center justify-center">
+                <svg className="w-5 h-5 text-[var(--pw-slate)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+              </div>
+              <div>
+                <CardTitle className="text-base font-heading text-[var(--pw-ink)]">Saved Drafts</CardTitle>
+                <p className="text-xs text-[var(--pw-slate)] font-body mt-0.5">{savedDrafts.length} draft{savedDrafts.length !== 1 ? 's' : ''} saved</p>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {loadingDrafts ? (
+            <div className="flex items-center justify-center h-16">
+              <div className="pw-spinner" />
+            </div>
+          ) : savedDrafts.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-sm text-[var(--pw-slate)] font-body">No saved drafts yet. Generate a draft above and save it.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {savedDrafts.map((draft) => (
+                <div key={draft.id} className="flex items-center justify-between p-4 rounded-lg bg-[var(--pw-warm)]/50 border border-[var(--pw-border)] group hover:bg-[var(--pw-warm)] transition-colors">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="text-sm font-medium text-[var(--pw-ink)] truncate">{draft.topic}</p>
+                      <Badge className={draft.status === 'published' ? 'bg-[var(--pw-sage-soft)] text-[var(--pw-sage)]' : 'bg-[var(--pw-warm)] text-[var(--pw-slate)]'}>
+                        {draft.status}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-[var(--pw-slate)] font-body">
+                      <span>{draft.targetKeywords?.slice(0, 3).join(', ')}</span>
+                      <span>&middot;</span>
+                      <span>{formatDate(draft.createdAt)}</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-1.5 ml-3">
+                    <Button size="sm" variant="outline" className="border-[var(--pw-border)] h-8 px-2.5" onClick={() => { setBlogDraft(draft.mdxContent); setLastGeneratedMeta(null); onDraftSaved(); toast.info('Draft loaded into editor'); }}>
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                    </Button>
+                    <Button size="sm" variant="outline" className="border-[var(--pw-border)] h-8 px-2.5" onClick={() => handleCopy(draft.mdxContent)}>
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                    </Button>
+                    <Button size="sm" variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 h-8 px-2.5" onClick={() => handleDeleteDraft(draft.id)}>
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

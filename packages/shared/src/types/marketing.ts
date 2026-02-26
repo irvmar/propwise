@@ -76,11 +76,30 @@ export interface SocialPost {
   dayOfWeek: string;
   campaignWeek: string;
   status: SocialPostStatus;
+  imageUrl?: string | null;
   scheduledFor?: Date;
   approvedBy?: string;
   approvedAt?: Date;
   rejectedReason?: string;
   publishedAt?: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ─── Blog Draft ────────────────────────────────────────────────────
+
+export type BlogDraftStatus = 'draft' | 'published';
+
+export interface BlogDraft {
+  id: string;
+  topic: string;
+  targetKeywords: string[];
+  angle?: string;
+  wordCount: number;
+  mdxContent: string;
+  status: BlogDraftStatus;
+  createdBy: string;
+  tokensUsed: number;
   createdAt: Date;
   updatedAt: Date;
 }

@@ -1,6 +1,7 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 import { logger } from '../../utils/logger';
 import { COLLECTIONS, getMarketingAdminEmails } from '../../shared/constants';
 import { generateStructured } from '../../services/claude.service';
@@ -41,11 +42,33 @@ function getCampaignWeek(): string {
   return `${now.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
 }
 
+// ─── Upload image to Firebase Storage ────────────────────────────────
+
+async function uploadImageToStorage(base64Data: string, path: string): Promise<string> {
+  const bucket = getStorage().bucket();
+  const file = bucket.file(path);
+  const buffer = Buffer.from(base64Data, 'base64');
+  await file.save(buffer, { contentType: 'image/png', public: true });
+  return `https://storage.googleapis.com/${bucket.name}/${path}`;
+}
+
 // ─── Core generation logic (shared between schedule and manual trigger) ─────
 
-async function runWeeklyContentGeneration(): Promise<{ postCount: number; campaignWeek: string }> {
+async function runWeeklyContentGeneration(): Promise<{ postCount: number; campaignWeek: string; skipped?: boolean }> {
   const theme = getMonthlyTheme();
   const campaignWeek = getCampaignWeek();
+
+  // Deduplicate: skip if non-rejected posts already exist for this campaign week
+  const existingSnap = await db.collection(COLLECTIONS.socialPosts)
+    .where('campaignWeek', '==', campaignWeek)
+    .where('status', 'in', ['draft', 'approved', 'published'])
+    .limit(1)
+    .get();
+
+  if (!existingSnap.empty) {
+    logger.info('Content already exists for campaign week, skipping', { campaignWeek });
+    return { postCount: 0, campaignWeek, skipped: true };
+  }
 
   // Check auto-approve setting
   const settingsDoc = await db.collection(COLLECTIONS.marketingSettings).doc('global').get();
@@ -81,13 +104,17 @@ async function runWeeklyContentGeneration(): Promise<{ postCount: number; campai
           recentAngles,
         );
 
-        // Generate image for the post
-        let imageBase64: string | null = null;
+        // Generate image and upload to Storage
+        let imageUrl: string | null = null;
         try {
           const imagePrompt = buildImagePrompt(content, platform, slot.category);
-          imageBase64 = await generatePostImage(imagePrompt, platform);
+          const imageBase64 = await generatePostImage(imagePrompt, platform);
+          if (imageBase64) {
+            const storagePath = `marketing/social-posts/${campaignWeek}/${platform}_${slot.dayOfWeek}.png`;
+            imageUrl = await uploadImageToStorage(imageBase64, storagePath);
+          }
         } catch (imgErr) {
-          logger.warn('Image generation failed, continuing without image', {
+          logger.warn('Image generation/upload failed, continuing without image', {
             platform,
             dayOfWeek: slot.dayOfWeek,
             error: imgErr instanceof Error ? imgErr.message : 'Unknown',
@@ -107,7 +134,7 @@ async function runWeeklyContentGeneration(): Promise<{ postCount: number; campai
           dayOfWeek: slot.dayOfWeek,
           campaignWeek,
           status: autoApprove ? 'approved' : 'draft',
-          imageBase64: imageBase64 ?? null,
+          imageUrl: imageUrl ?? null,
           scheduledFor: Timestamp.fromDate(scheduledDate),
           createdAt: Timestamp.now(),
           updatedAt: Timestamp.now(),
@@ -133,7 +160,7 @@ async function runWeeklyContentGeneration(): Promise<{ postCount: number; campai
 
   await batch.commit();
   logger.info('Weekly content generated', { postCount, campaignWeek });
-  return { postCount, campaignWeek };
+  return { postCount, campaignWeek, skipped: false };
 }
 
 // ─── Scheduled trigger (Sunday 8 PM ET) ─────────────────────────────

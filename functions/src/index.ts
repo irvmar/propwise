@@ -52,6 +52,7 @@ export { processEmailDrips } from './handlers/marketing/processEmailDrips';
 export { resendWebhook } from './handlers/marketing/resendWebhook';
 export { unsubscribeEmail } from './handlers/marketing/unsubscribe';
 export { generateWeeklyContent, triggerWeeklyContent } from './handlers/marketing/generateWeeklyContent';
-export { getSocialPosts, approvePost, rejectPost, publishApprovedPosts } from './handlers/marketing/socialPosts';
+export { getSocialPosts, approvePost, rejectPost, deletePost, publishApprovedPosts } from './handlers/marketing/socialPosts';
 export { generateBlogDraft } from './handlers/marketing/generateBlogDraft';
+export { saveBlogDraft, getBlogDrafts, updateBlogDraft, deleteBlogDraft } from './handlers/marketing/blogDrafts';
 export { getMarketingSettings, updateMarketingSettings } from './handlers/marketing/settings';

@@ -1,6 +1,7 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 import { ZodError } from 'zod';
 import { logger } from '../../utils/logger';
 import { COLLECTIONS, getMarketingAdminEmails } from '../../shared/constants';
@@ -49,11 +50,9 @@ export const getSocialPosts = onCall(async (request) => {
   }
 
   const snap = await query.get();
-  // Strip imageBase64 from list response to keep payload small
   return snap.docs.map((doc) => {
     const data = doc.data();
-    const { imageBase64, ...rest } = data;
-    return { id: doc.id, ...rest, hasImage: !!imageBase64 };
+    return { id: doc.id, ...data, hasImage: !!data.imageUrl };
   });
 });
 
@@ -110,6 +109,37 @@ export const rejectPost = onCall(async (request) => {
   });
 
   logger.info('Post rejected', { postId: data.postId, reason: data.reason });
+  return { success: true };
+});
+
+// ─── Delete Post ─────────────────────────────────────────────────────
+
+export const deletePost = onCall(async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Must be signed in');
+  requireMarketingAdmin(request.auth.token.email);
+
+  const postId = request.data?.postId as string;
+  if (!postId) throw new HttpsError('invalid-argument', 'postId is required');
+
+  const postRef = db.collection(COLLECTIONS.socialPosts).doc(postId);
+  const postDoc = await postRef.get();
+
+  if (!postDoc.exists) throw new HttpsError('not-found', 'Post not found');
+
+  // Delete image from Storage if it exists
+  const imageUrl = postDoc.data()?.imageUrl;
+  if (imageUrl) {
+    try {
+      const bucket = getStorage().bucket();
+      const path = imageUrl.split(`${bucket.name}/`)[1];
+      if (path) await bucket.file(path).delete();
+    } catch (err) {
+      logger.warn('Failed to delete image from storage', { postId, error: err instanceof Error ? err.message : 'Unknown' });
+    }
+  }
+
+  await postRef.delete();
+  logger.info('Post deleted', { postId });
   return { success: true };
 });
 

@@ -78,7 +78,7 @@ export interface SocialPost {
   dayOfWeek: string;
   campaignWeek: string;
   status: SocialPostStatus;
-  imageBase64?: string | null;
+  imageUrl?: string | null;
   scheduledFor?: Timestamp;
   approvedBy?: string;
   approvedAt?: Timestamp;
