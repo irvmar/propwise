@@ -645,6 +645,31 @@ function SocialTab({ posts, onRefresh }: { posts: SocialPost[]; onRefresh: () =>
     }
   };
 
+  const handleApproveAll = async () => {
+    const drafts = posts.filter(p => p.status === 'draft');
+    if (!drafts.length || !confirm(`Approve all ${drafts.length} draft posts?`)) return;
+    try {
+      await Promise.all(drafts.map(p => httpsCallable(functions, 'approvePost')({ postId: p.id })));
+      toast.success(`Approved ${drafts.length} posts`);
+      onRefresh();
+    } catch {
+      toast.error('Failed to approve some posts');
+      onRefresh();
+    }
+  };
+
+  const handleDeleteAll = async () => {
+    if (!posts.length || !confirm(`Delete all ${posts.length} posts? This cannot be undone.`)) return;
+    try {
+      await Promise.all(posts.map(p => httpsCallable(functions, 'deletePost')({ postId: p.id })));
+      toast.success(`Deleted ${posts.length} posts`);
+      onRefresh();
+    } catch {
+      toast.error('Failed to delete some posts');
+      onRefresh();
+    }
+  };
+
   const draftCount = posts.filter(p => p.status === 'draft').length;
   const publishedCount = posts.filter(p => p.status === 'published').length;
 
@@ -684,6 +709,18 @@ function SocialTab({ posts, onRefresh }: { posts: SocialPost[]; onRefresh: () =>
                 />
               </div>
 
+              {draftCount > 0 && (
+                <Button onClick={handleApproveAll} size="sm" variant="outline" className="border-[var(--pw-border)]">
+                  <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                  Approve All ({draftCount})
+                </Button>
+              )}
+              {posts.length > 0 && (
+                <Button onClick={handleDeleteAll} size="sm" variant="ghost" className="text-red-500 hover:text-red-700 hover:bg-red-50">
+                  <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  Delete All
+                </Button>
+              )}
               <Button onClick={handleGenerate} disabled={generating} size="sm">
                 {generating ? (
                   <>
@@ -748,15 +785,34 @@ function SocialTab({ posts, onRefresh }: { posts: SocialPost[]; onRefresh: () =>
                 <span className="text-xs text-[var(--pw-slate)] ml-auto font-body">{post.dayOfWeek}</span>
               </div>
 
-              {/* Image thumbnail */}
+              {/* Image thumbnail with download */}
               {post.imageUrl && (
-                <div className="mb-3 rounded-lg overflow-hidden border border-[var(--pw-border)]">
+                <div className="mb-3 rounded-lg overflow-hidden border border-[var(--pw-border)] relative group/img">
                   <img src={post.imageUrl} alt="Post image" className="w-full h-32 object-cover" />
+                  <a
+                    href={post.imageUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-md p-1.5 opacity-0 group-hover/img:opacity-100 transition-opacity"
+                    title="Open image"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                  </a>
                 </div>
               )}
 
               {/* Content */}
               <p className="text-sm font-body text-[var(--pw-ink)] mb-3 line-clamp-4 leading-relaxed">{post.content}</p>
+
+              {/* Twitter character count */}
+              {post.platform === 'twitter' && (() => {
+                const total = post.content.length + (post.hashtags.length > 0 ? 1 + post.hashtags.join(' ').length : 0);
+                return (
+                  <p className={`text-xs font-mono mb-2 ${total > 280 ? 'text-red-500 font-bold' : 'text-[var(--pw-slate)]'}`}>
+                    {total}/280 chars{total > 280 && ' — over limit!'}
+                  </p>
+                );
+              })()}
 
               {/* Hashtags */}
               {post.hashtags.length > 0 && (

@@ -76,14 +76,15 @@ async function runWeeklyContentGeneration(): Promise<{ postCount: number; campai
 
   logger.info('Generating weekly content', { theme, campaignWeek, autoApprove });
 
-  // Fetch last 20 published posts to avoid repeating angles
+  // Fetch last 20 posts (any non-rejected status) to avoid repeating angles
   const recentSnap = await db.collection(COLLECTIONS.socialPosts)
-    .where('status', '==', 'published')
-    .orderBy('publishedAt', 'desc')
+    .orderBy('createdAt', 'desc')
     .limit(20)
     .get();
 
-  const recentAngles = recentSnap.docs.map((d) => d.data().content.substring(0, 100));
+  const recentAngles = recentSnap.docs
+    .filter((d) => d.data().status !== 'rejected')
+    .map((d) => d.data().content.substring(0, 100));
 
   // Get next Monday's date
   const now = new Date();
@@ -195,9 +196,43 @@ export const triggerWeeklyContent = onCall(
 
 // ─── Image prompt builder ───────────────────────────────────────────
 
+const BRAND = 'Use only these colors: deep navy (#1a365d), bright teal (#0ea5e9), warm amber (#f59e0b), white (#ffffff), and slate gray (#64748b).';
+
+const CATEGORY_PROMPTS: Record<string, string[]> = {
+  'Industry Insights': [
+    `Generate an image of a bold data visualization graphic for a property management SaaS company. A dramatic upward trend line in bright teal (#0ea5e9) sweeps across a deep navy (#1a365d) background, with glowing data points along the curve. Subtle grid lines and small floating stat callouts in white create depth. The design feels like a premium analyst report from McKinsey. {FORMAT}. ${BRAND}`,
+    `Generate an image of an overhead drone-style view of a modern city neighborhood at golden hour, with apartment buildings connected by glowing teal (#0ea5e9) network lines representing a connected property management ecosystem. Warm evening light on buildings contrasts with cool digital overlay. Cinematic color grading, photorealistic. {FORMAT}.`,
+    `Generate an image of a split-screen comparison infographic. Left half: a chaotic property manager desk with sticky notes, ringing phone, overflowing inbox in muted desaturated tones. Right half: a clean modern workspace with a sleek laptop showing a property dashboard with green checkmarks, rendered in cool blues and teals. Bold diagonal dividing line. Clean editorial illustration style. {FORMAT}. ${BRAND}`,
+  ],
+  'Product Education': [
+    `Generate an image of a smartphone floating center-frame displaying a text conversation between a tenant reporting a maintenance issue and an AI assistant scheduling a repair instantly. Radiating outward: glowing icons for a wrench, clock, dollar sign, house, and chat bubble. Background is a soft gradient from deep navy to dark teal. Polished tech product marketing visual with subtle glow effects. {FORMAT}. ${BRAND}`,
+    `Generate an image of a step-by-step workflow illustration with three connected panels in clean flat design: Panel 1 shows a tenant texting (phone with speech bubble), Panel 2 shows AI processing (circuit brain with lightbulb), Panel 3 shows a property manager receiving a summary (laptop with green checkmark). Connected by flowing teal arrows on white background. Bold modern sans-serif labels. {FORMAT}. ${BRAND}`,
+    `Generate an image of three phone mockups side by side on deep navy (#1a365d) background with subtle dot grid. Left phone: incoming tenant messages. Center phone (larger, elevated): AI processing with glowing teal brain icon. Right phone: resolved conversation with green checkmark. Thin glowing teal lines connect them. Sleek, minimal, tech-forward. {FORMAT}. ${BRAND}`,
+  ],
+  'Customer Stories': [
+    `Generate an image of a confident property manager standing in the lobby of a modern apartment building, holding a tablet showing positive metrics. Contemporary architecture with clean lines, warm wood accents, large windows with natural light. Smart business casual attire, genuine relaxed smile. Shot with 85mm portrait lens, shallow depth of field blurring the lobby. Warm natural lighting. {FORMAT}.`,
+    `Generate an image of a bold results graphic on white background. A large circular gauge in the center shows a metric improving from red to green. Surrounding it: three rounded stat callouts with navy backgrounds and white text. Uses navy (#1a365d), teal (#0ea5e9), amber (#f59e0b), and green (#10b981). Clean modern infographic with subtle drop shadows. {FORMAT}. ${BRAND}`,
+    `Generate an image of a before-and-after transformation banner. Left side: stressed property manager surrounded by chaotic floating notifications in warm red tones. Right side: same person relaxed with a clean laptop showing organized dashboard, AI icon handling notifications orderly. Diagonal gradient transition from warm to cool. Clean editorial illustration style. {FORMAT}. ${BRAND}`,
+  ],
+  'Community Engagement': [
+    `Generate an image of a warm isometric illustration of a small neighborhood with three apartment buildings, a well-maintained green courtyard, and small figures of happy residents. Warm afternoon lighting with soft shadows. The color palette uses soft blues, greens, and warm earth tones. Polished isometric vector illustration style, inviting and community-oriented. {FORMAT}.`,
+    `Generate an image of two property managers having a friendly conversation in a bright modern co-working space, one gesturing toward a whiteboard with property icons. Warm and approachable flat design with rounded shapes. Navy, teal, and amber on clean white background. Modern SaaS illustration style similar to Notion or Slack marketing. {FORMAT}. ${BRAND}`,
+    `Generate an image of a vibrant community scene: modern apartment building courtyard with a small gathering of diverse residents. String lights overhead, potted plants, a bulletin board. Warm golden hour lighting. Photorealistic with a welcoming, lived-in feel. Shot with wide-angle lens capturing the full communal space. {FORMAT}.`,
+  ],
+  'Thought Leadership': [
+    `Generate an image of a modern apartment building facade at dusk with subtle digital overlay: holographic data points, connection lines, and small AI nodes floating near windows. Building is photorealistic with warm brick and glass, digital elements in glowing teal (#0ea5e9) with subtle transparency. Near-future feel, not sci-fi. Cinematic low-angle perspective. {FORMAT}.`,
+    `Generate an image of a conceptual illustration showing three stages of property management evolution flowing left to right: Stage 1 (sepia tones) vintage desk with rotary phone and paper ledger. Stage 2 (gray tones) desktop computer with spreadsheets. Stage 3 (vibrant navy and teal) sleek laptop with AI conversation and digital key. Connected by a timeline arrow. Clean editorial illustration. {FORMAT}. ${BRAND}`,
+    `Generate an image of a dramatic bird's-eye view of a modern city neighborhood. Apartment buildings glow with warm interior light against a twilight sky. Bright teal (#0ea5e9) network lines connect buildings, representing a smart property ecosystem. Photorealistic with cinematic color grading — warm highlights, cool shadows. Drone photography style at golden hour. {FORMAT}.`,
+  ],
+};
+
 function buildImagePrompt(postContent: string, platform: SocialPlatform, category: string): string {
-  const snippet = postContent.substring(0, 150);
-  return `Professional, modern social media graphic for a property management technology company. Category: ${category}. Style: clean, minimalist, corporate blue and white color scheme. No text overlay. Topic context: "${snippet}". Photorealistic with subtle tech elements.`;
+  const templates = CATEGORY_PROMPTS[category] || CATEGORY_PROMPTS['Industry Insights'];
+  const template = templates[Math.floor(Math.random() * templates.length)];
+  const format = platform === 'linkedin'
+    ? 'Square format, 1:1 aspect ratio'
+    : 'Landscape format, 16:9 aspect ratio';
+  return template.replace('{FORMAT}', format);
 }
 
 // ─── Post text generator ────────────────────────────────────────────
@@ -256,22 +291,26 @@ Monthly theme: ${themeLabels[theme]}
 Recent angles to AVOID repeating:
 ${recentAngles.slice(0, 5).map((a) => `- ${a}`).join('\n') || '(none yet)'}`;
 
-  try {
-    const { data } = await generateStructured<{ content: string; hashtags: string[] }>(
-      systemPrompt,
-      userMessage,
-      socialPostSchema,
-      { maxTokens },
-    );
-    if (data.content && Array.isArray(data.hashtags)) return data;
-  } catch (err) {
-    logger.warn('Failed to generate social post via structured output', {
-      error: err instanceof Error ? err.message : 'Unknown',
-    });
+  const { data } = await generateStructured<{ content: string; hashtags: string[] }>(
+    systemPrompt,
+    userMessage,
+    socialPostSchema,
+    { maxTokens },
+  );
+
+  if (!data.content || !Array.isArray(data.hashtags)) {
+    throw new Error('Invalid structured output from Claude');
   }
 
-  return {
-    content: `Property management is evolving. The best PMs aren't working harder — they're working smarter with AI-powered communication tools.`,
-    hashtags: ['#PropertyManagement', '#PropTech'],
-  };
+  // Enforce Twitter 280-char limit
+  if (platform === 'twitter') {
+    const hashtagStr = data.hashtags.length > 0 ? ' ' + data.hashtags.join(' ') : '';
+    const totalLength = data.content.length + hashtagStr.length;
+    if (totalLength > 280) {
+      const maxContent = 280 - hashtagStr.length - 1; // -1 for ellipsis
+      data.content = data.content.substring(0, maxContent).trimEnd() + '…';
+    }
+  }
+
+  return data;
 }

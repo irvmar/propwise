@@ -52,6 +52,7 @@ export async function generatePostImage(
         imageConfig: {
           aspectRatio,
           imageSize: '1K',
+          personGeneration: 'ALLOW_ADULT',
         },
       },
     });
