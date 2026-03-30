@@ -35,5 +35,12 @@ npm-debug.log*
 # Vercel
 .vercel
 
+# Claude Code (local settings may contain env vars)
+.claude/settings.local.json
+
+# Eval reports (generated, contain response data)
+functions/src/evals/reports/*.json
+functions/src/evals/reports/*.csv
+
 # TypeScript
 *.tsbuildinfo
