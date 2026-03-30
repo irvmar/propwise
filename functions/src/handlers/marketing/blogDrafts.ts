@@ -1,9 +1,46 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { logger } from '../../utils/logger';
 import { COLLECTIONS, getMarketingAdminEmails } from '../../shared/constants';
 
 const db = getFirestore();
+
+// ─── Helpers ─────────────────────────────────────────────────────────
+
+function extractTitleFromMdx(mdxContent: string): string | null {
+  const match = mdxContent.match(/^---\s*\n([\s\S]*?)\n---/);
+  if (!match) return null;
+  const frontmatter = match[1];
+  const titleMatch = frontmatter.match(/^title:\s*['"]?(.*?)['"]?\s*$/m);
+  return titleMatch ? titleMatch[1].trim() : null;
+}
+
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
+async function generateUniqueSlug(baseSlug: string, excludeDocId?: string): Promise<string> {
+  let candidate = baseSlug;
+  let suffix = 0;
+
+  for (;;) {
+    const snap = await db.collection(COLLECTIONS.blogDrafts)
+      .where('slug', '==', candidate)
+      .limit(2)
+      .get();
+
+    const conflicts = snap.docs.filter((d) => d.id !== excludeDocId);
+    if (conflicts.length === 0) return candidate;
+
+    suffix++;
+    candidate = `${baseSlug}-${suffix}`;
+  }
+}
 
 // ─── Save a blog draft to Firestore ─────────────────────────────────
 
@@ -29,6 +66,11 @@ export const saveBlogDraft = onCall(
       throw new HttpsError('invalid-argument', 'Topic and mdxContent are required');
     }
 
+    // Auto-generate unique slug from MDX frontmatter title
+    const title = extractTitleFromMdx(mdxContent);
+    const baseSlug = title ? slugify(title) : slugify(topic);
+    const slug = await generateUniqueSlug(baseSlug);
+
     const ref = db.collection(COLLECTIONS.blogDrafts).doc();
     const draft = {
       topic,
@@ -36,6 +78,7 @@ export const saveBlogDraft = onCall(
       angle: angle || null,
       wordCount: wordCount || 0,
       mdxContent,
+      slug,
       status: 'draft',
       createdBy: email,
       tokensUsed: tokensUsed || 0,
@@ -44,9 +87,9 @@ export const saveBlogDraft = onCall(
     };
 
     await ref.set(draft);
-    logger.info('Blog draft saved', { id: ref.id, topic });
+    logger.info('Blog draft saved', { id: ref.id, topic, slug });
 
-    return { id: ref.id };
+    return { id: ref.id, slug };
   },
 );
 
@@ -81,14 +124,16 @@ export const updateBlogDraft = onCall(
       throw new HttpsError('permission-denied', 'Not authorized for marketing');
     }
 
-    const { draftId, status, mdxContent } = request.data as {
-      draftId: string;
-      status?: 'draft' | 'published';
-      mdxContent?: string;
-    };
+    const input = request.data as Record<string, unknown>;
+    const draftId = typeof input.draftId === 'string' ? input.draftId : '';
+    const status = input.status as string | undefined;
+    const mdxContent = typeof input.mdxContent === 'string' ? input.mdxContent : undefined;
 
     if (!draftId) {
       throw new HttpsError('invalid-argument', 'draftId is required');
+    }
+    if (status !== undefined && status !== 'draft' && status !== 'published') {
+      throw new HttpsError('invalid-argument', 'status must be "draft" or "published"');
     }
 
     const ref = db.collection(COLLECTIONS.blogDrafts).doc(draftId);
@@ -97,14 +142,33 @@ export const updateBlogDraft = onCall(
       throw new HttpsError('not-found', 'Draft not found');
     }
 
+    const existing = doc.data();
+    if (!existing) {
+      throw new HttpsError('not-found', 'Draft data missing');
+    }
     const updates: Record<string, unknown> = { updatedAt: Timestamp.now() };
     if (status) updates.status = status;
-    if (mdxContent) updates.mdxContent = mdxContent;
+    if (mdxContent) {
+      updates.mdxContent = mdxContent;
+      // Regenerate slug if content changed
+      const title = extractTitleFromMdx(mdxContent);
+      if (title) updates.slug = await generateUniqueSlug(slugify(title), draftId);
+    }
+
+    // Set publishedAt when transitioning to published
+    if (status === 'published' && existing.status !== 'published') {
+      updates.publishedAt = Timestamp.now();
+    }
+
+    // Clear publishedAt when unpublishing
+    if (status === 'draft' && existing.status === 'published') {
+      updates.publishedAt = FieldValue.delete();
+    }
 
     await ref.update(updates);
-    logger.info('Blog draft updated', { draftId, status });
+    logger.info('Blog draft updated', { draftId, status, slug: updates.slug });
 
-    return { success: true };
+    return { success: true, slug: updates.slug || existing.slug };
   },
 );
 
@@ -119,12 +183,19 @@ export const deleteBlogDraft = onCall(
       throw new HttpsError('permission-denied', 'Not authorized for marketing');
     }
 
-    const { draftId } = request.data as { draftId: string };
+    const deleteInput = request.data as Record<string, unknown>;
+    const draftId = typeof deleteInput.draftId === 'string' ? deleteInput.draftId : '';
     if (!draftId) {
       throw new HttpsError('invalid-argument', 'draftId is required');
     }
 
-    await db.collection(COLLECTIONS.blogDrafts).doc(draftId).delete();
+    const ref = db.collection(COLLECTIONS.blogDrafts).doc(draftId);
+    const doc = await ref.get();
+    if (doc.exists && doc.data()?.status === 'published') {
+      throw new HttpsError('failed-precondition', 'Cannot delete a published post. Unpublish it first.');
+    }
+
+    await ref.delete();
     logger.info('Blog draft deleted', { draftId });
 
     return { success: true };

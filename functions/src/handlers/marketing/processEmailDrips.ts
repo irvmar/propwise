@@ -4,6 +4,7 @@ import { logger } from '../../utils/logger';
 import { COLLECTIONS } from '../../shared/constants';
 import { generateStructured } from '../../services/claude.service';
 import { sendEmail } from '../../services/resend.service';
+import { getEmailInsights, getLeadSegmentInsights } from '../../services/marketing-insights.service';
 
 const db = getFirestore();
 
@@ -40,6 +41,13 @@ export const processEmailDrips = onSchedule(
 
     logger.info('Processing email drips', { count: leadsSnap.size });
 
+    // Fetch performance insights once for the entire batch
+    const [emailInsights, segmentInsights] = await Promise.all([
+      getEmailInsights(),
+      getLeadSegmentInsights(),
+    ]);
+    logger.info('Performance insights loaded for email personalization');
+
     for (const leadDoc of leadsSnap.docs) {
       try {
         const lead = leadDoc.data();
@@ -66,7 +74,7 @@ export const processEmailDrips = onSchedule(
 
         // Personalize with Claude
         const unsubscribeUrl = getUnsubscribeUrl(leadDoc.id);
-        const { subject, html } = await personalizeEmail(currentStep, lead, leadDoc.id, unsubscribeUrl);
+        const { subject, html } = await personalizeEmail(currentStep, lead, leadDoc.id, unsubscribeUrl, emailInsights, segmentInsights);
 
         // Send via Resend with List-Unsubscribe header for one-click unsubscribe
         const { id: resendId } = await sendEmail({
@@ -130,15 +138,17 @@ export const processEmailDrips = onSchedule(
 );
 
 async function personalizeEmail(
-  step: { subjectTemplate: string; bodyTemplate: string; variant: string },
+  step: { subjectTemplate: string; bodyTemplate: string; variant: string; stepNumber?: number },
   lead: Record<string, unknown>,
   leadId: string,
   unsubscribeUrl: string,
+  emailInsights: string,
+  segmentInsights: string,
 ): Promise<{ subject: string; html: string }> {
-  const name = (lead.name as string) || 'there';
-  const company = (lead.company as string) || 'your company';
-  const portfolioSize = (lead.portfolioSize as number) ?? 50;
-  const market = (lead.market as string) || '';
+  const name = typeof lead.name === 'string' ? lead.name : 'there';
+  const company = typeof lead.company === 'string' ? lead.company : 'your company';
+  const portfolioSize = typeof lead.portfolioSize === 'number' ? lead.portfolioSize : 50;
+  const market = typeof lead.market === 'string' ? lead.market : '';
 
   // Determine personalization angle by portfolio size
   let sizeAngle = 'how much time you could save each week';
@@ -151,6 +161,8 @@ async function personalizeEmail(
   const unsubscribeHtml = `<a href="${unsubscribeUrl}" style="color:#999;text-decoration:underline;">Unsubscribe</a>`;
   const footer = `<p style="font-size:12px;color:#666;margin-top:32px;">${unsubscribeHtml} | ${PHYSICAL_ADDRESS}</p>`;
 
+  const stepNum = step.stepNumber ?? 0;
+
   const systemPrompt = `You are writing a cold email for PropWise, an AI-powered property management communication tool.
 
 RULES:
@@ -161,7 +173,16 @@ RULES:
 - Focus angle for this portfolio size: ${sizeAngle}
 - DO NOT include unsubscribe links or physical address — those are added automatically after your output.
 - Output ONLY valid JSON: {"subject": "...", "html": "..."}
-- The HTML should use simple <p> tags, no fancy styling`;
+- The HTML should use simple <p> tags, no fancy styling
+
+PERFORMANCE DATA — Use this to adjust your approach. Lean into what works, avoid what doesn't:
+This is email step ${stepNum} for a lead managing ~${portfolioSize} units.
+
+Email performance by step:
+${emailInsights}
+
+Lead segment performance:
+${segmentInsights}`;
 
   const userMessage = `Personalize this ${step.variant} email.
 

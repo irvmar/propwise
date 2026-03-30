@@ -899,15 +899,18 @@ interface SavedBlogDraft {
   topic: string;
   targetKeywords: string[];
   mdxContent: string;
+  slug?: string;
   status: string;
   tokensUsed: number;
   createdAt: { _seconds: number };
+  publishedAt?: { _seconds: number };
 }
 
 function BlogTab({ blogDraft, setBlogDraft, onDraftSaved }: { blogDraft: string; setBlogDraft: (v: string) => void; onDraftSaved: () => void }) {
   const [form, setForm] = useState({ topic: '', keywords: '', angle: '', wordCount: '1200' });
   const [generating, setGenerating] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
   const [savedDrafts, setSavedDrafts] = useState<SavedBlogDraft[]>([]);
   const [loadingDrafts, setLoadingDrafts] = useState(true);
   const [lastGeneratedMeta, setLastGeneratedMeta] = useState<{ topic: string; keywords: string[]; angle?: string; wordCount: number; tokensUsed: number } | null>(null);
@@ -982,6 +985,37 @@ function BlogTab({ blogDraft, setBlogDraft, onDraftSaved }: { blogDraft: string;
       toast.error('Failed to save draft');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePublish = async (draftId: string) => {
+    if (publishingId) return;
+    setPublishingId(draftId);
+    try {
+      const res = await httpsCallable(functions, 'updateBlogDraft')({ draftId, status: 'published' }) as { data: { slug?: string } };
+      toast.success('Blog post published! It will appear on /blog within a minute.');
+      if (res.data?.slug) {
+        toast.info(`Slug: /blog/${res.data.slug}`);
+      }
+      loadDrafts();
+    } catch {
+      toast.error('Failed to publish draft');
+    } finally {
+      setPublishingId(null);
+    }
+  };
+
+  const handleUnpublish = async (draftId: string) => {
+    if (publishingId) return;
+    setPublishingId(draftId);
+    try {
+      await httpsCallable(functions, 'updateBlogDraft')({ draftId, status: 'draft' });
+      toast.success('Post unpublished');
+      loadDrafts();
+    } catch {
+      toast.error('Failed to unpublish');
+    } finally {
+      setPublishingId(null);
     }
   };
 
@@ -1141,9 +1175,30 @@ function BlogTab({ blogDraft, setBlogDraft, onDraftSaved }: { blogDraft: string;
                       <span>{draft.targetKeywords?.slice(0, 3).join(', ')}</span>
                       <span>&middot;</span>
                       <span>{formatDate(draft.createdAt)}</span>
+                      {draft.status === 'published' && draft.slug && (
+                        <>
+                          <span>&middot;</span>
+                          <a href={`/blog/${draft.slug}`} target="_blank" rel="noopener noreferrer" className="text-[var(--pw-accent)] hover:underline">
+                            /blog/{draft.slug}
+                          </a>
+                        </>
+                      )}
                     </div>
                   </div>
                   <div className="flex gap-1.5 ml-3">
+                    {draft.status === 'draft' ? (
+                      <Button size="sm" className="bg-[var(--pw-sage)] hover:bg-[var(--pw-sage)]/90 text-white h-8 px-3" disabled={publishingId === draft.id} onClick={() => handlePublish(draft.id)}>
+                        {publishingId === draft.id ? (
+                          <><div className="pw-spinner-sm mr-1" />Publishing...</>
+                        ) : (
+                          <><svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3l14 9-14 9V3z" /></svg>Publish</>
+                        )}
+                      </Button>
+                    ) : draft.status === 'published' ? (
+                      <Button size="sm" variant="outline" className="border-[var(--pw-border)] h-8 px-3 text-[var(--pw-slate)]" disabled={publishingId === draft.id} onClick={() => handleUnpublish(draft.id)}>
+                        {publishingId === draft.id ? 'Unpublishing...' : 'Unpublish'}
+                      </Button>
+                    ) : null}
                     <Button size="sm" variant="outline" className="border-[var(--pw-border)] h-8 px-2.5" onClick={() => { setBlogDraft(draft.mdxContent); setLastGeneratedMeta(null); onDraftSaved(); toast.info('Draft loaded into editor'); }}>
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                     </Button>

@@ -6,6 +6,7 @@ import { logger } from '../../utils/logger';
 import { COLLECTIONS, getMarketingAdminEmails } from '../../shared/constants';
 import { generateStructured } from '../../services/claude.service';
 import { generatePostImage } from '../../services/imagen.service';
+import { getSocialInsights } from '../../services/marketing-insights.service';
 import type { ContentTheme, SocialPlatform } from '../../shared/types';
 
 const db = getFirestore();
@@ -76,6 +77,10 @@ async function runWeeklyContentGeneration(): Promise<{ postCount: number; campai
 
   logger.info('Generating weekly content', { theme, campaignWeek, autoApprove });
 
+  // Fetch performance insights for Claude prompts
+  const socialInsights = await getSocialInsights();
+  logger.info('Social insights loaded for content generation', { insightsLength: socialInsights.length });
+
   // Fetch last 20 posts (any non-rejected status) to avoid repeating angles
   const recentSnap = await db.collection(COLLECTIONS.socialPosts)
     .orderBy('createdAt', 'desc')
@@ -103,6 +108,7 @@ async function runWeeklyContentGeneration(): Promise<{ postCount: number; campai
           slot.category,
           theme,
           recentAngles,
+          socialInsights,
         );
 
         // Generate image and upload to Storage
@@ -255,6 +261,7 @@ async function generatePost(
   category: string,
   theme: ContentTheme,
   recentAngles: string[],
+  socialInsights: string,
 ): Promise<{ content: string; hashtags: string[] }> {
   const themeLabels: Record<ContentTheme, string> = {
     pain_points: 'Pain Points & Challenges PMs face daily',
@@ -282,7 +289,10 @@ RULES:
 - DON'T use "we" language like "we're excited to announce." Write in first person as a founder who gets it.
 - Keep it real. Reference specific PM scenarios: 2 AM texts, maintenance request floods, tenant ghosting, rent collection headaches.
 
-${platformConstraints}`;
+${platformConstraints}
+
+PERFORMANCE DATA — Here's what's working and what's not based on recent post approvals/rejections. Use this to guide your tone, theme emphasis, and content approach. Double down on what gets approved; avoid patterns that got rejected:
+${socialInsights}`;
 
   const userMessage = `Write a ${platform} post.
 Category: ${category}

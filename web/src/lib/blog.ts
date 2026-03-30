@@ -1,13 +1,10 @@
-import fs from 'fs';
-import path from 'path';
 import matter from 'gray-matter';
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
 import rehypeSanitize from 'rehype-sanitize';
 import rehypeStringify from 'rehype-stringify';
-
-const BLOG_DIR = path.join(process.cwd(), 'src/content/blog');
+import { getAdminFirestore } from './firebase-admin';
 
 export interface BlogPost {
   slug: string;
@@ -20,47 +17,90 @@ export interface BlogPost {
   content: string;
 }
 
-export function getAllPosts(): BlogPost[] {
-  if (!fs.existsSync(BLOG_DIR)) return [];
+export async function getAllPosts(): Promise<BlogPost[]> {
+  try {
+    const db = getAdminFirestore();
 
-  const files = fs.readdirSync(BLOG_DIR).filter((f) => f.endsWith('.mdx') || f.endsWith('.md'));
+    const snap = await db
+      .collection('blogDrafts')
+      .where('status', '==', 'published')
+      .orderBy('publishedAt', 'desc')
+      .get();
 
-  const posts = files.map((file) => {
-    const slug = file.replace(/\.(mdx|md)$/, '');
-    const fullPath = path.join(BLOG_DIR, file);
-    const fileContents = fs.readFileSync(fullPath, 'utf8');
-    const { data, content } = matter(fileContents);
+    if (snap.empty) return [];
 
-    return {
-      slug,
-      title: data.title || slug,
-      description: data.description || '',
-      date: data.date || '',
-      author: data.author || 'PropWise Team',
-      tags: data.tags || [],
-      keywords: data.keywords || [],
-      content,
-    };
-  });
+    return snap.docs.map((doc) => {
+      const data = doc.data();
+      const { data: fm, content } = matter(data.mdxContent || '');
 
-  return posts.sort((a, b) => (a.date > b.date ? -1 : 1));
+      return {
+        slug: data.slug || doc.id,
+        title: typeof fm.title === 'string' ? fm.title : data.topic || doc.id,
+        description: typeof fm.description === 'string' ? fm.description : '',
+        date: safeDate(fm.date) || formatTimestamp(data.publishedAt || data.createdAt),
+        author: typeof fm.author === 'string' ? fm.author : 'PropWise Team',
+        tags: Array.isArray(fm.tags) ? fm.tags : [],
+        keywords: Array.isArray(fm.keywords) ? fm.keywords : Array.isArray(data.targetKeywords) ? data.targetKeywords : [],
+        content,
+      };
+    });
+  } catch (err) {
+    console.error('Failed to fetch blog posts from Firestore:', err);
+    return [];
+  }
 }
 
 export async function getPostBySlug(slug: string): Promise<(BlogPost & { htmlContent: string }) | null> {
-  const posts = getAllPosts();
-  const post = posts.find((p) => p.slug === slug);
-  if (!post) return null;
+  try {
+    const db = getAdminFirestore();
 
-  // Parse markdown → sanitize HTML → render
-  const result = await unified()
-    .use(remarkParse)
-    .use(remarkRehype)
-    .use(rehypeSanitize)
-    .use(rehypeStringify)
-    .process(post.content);
+    const snap = await db
+      .collection('blogDrafts')
+      .where('slug', '==', slug)
+      .where('status', '==', 'published')
+      .limit(1)
+      .get();
 
-  return {
-    ...post,
-    htmlContent: result.toString(),
-  };
+    if (snap.empty) return null;
+
+    const doc = snap.docs[0];
+    const data = doc.data();
+    const { data: frontmatter, content } = matter(data.mdxContent || '');
+
+    const result = await unified()
+      .use(remarkParse)
+      .use(remarkRehype)
+      .use(rehypeSanitize)
+      .use(rehypeStringify)
+      .process(content);
+
+    return {
+      slug: data.slug || doc.id,
+      title: typeof frontmatter.title === 'string' ? frontmatter.title : data.topic || doc.id,
+      description: typeof frontmatter.description === 'string' ? frontmatter.description : '',
+      date: safeDate(frontmatter.date) || formatTimestamp(data.publishedAt || data.createdAt),
+      author: typeof frontmatter.author === 'string' ? frontmatter.author : 'PropWise Team',
+      tags: Array.isArray(frontmatter.tags) ? frontmatter.tags : [],
+      keywords: Array.isArray(frontmatter.keywords) ? frontmatter.keywords : Array.isArray(data.targetKeywords) ? data.targetKeywords : [],
+      content,
+      htmlContent: result.toString(),
+    };
+  } catch (err) {
+    console.error('Failed to fetch blog post from Firestore:', err);
+    return null;
+  }
+}
+
+function safeDate(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (value instanceof Date) return value.toISOString().split('T')[0];
+  return '';
+}
+
+function formatTimestamp(ts: unknown): string {
+  if (!ts || typeof ts !== 'object') return '';
+  const obj = ts as Record<string, unknown>;
+  if (typeof obj.toDate === 'function') return (obj.toDate as () => Date)().toISOString().split('T')[0];
+  const seconds = typeof obj._seconds === 'number' ? obj._seconds : typeof obj.seconds === 'number' ? obj.seconds : 0;
+  return seconds > 0 ? new Date(seconds * 1000).toISOString().split('T')[0] : '';
 }

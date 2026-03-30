@@ -2,13 +2,15 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getAllPosts } from '@/lib/blog';
 
+export const revalidate = 60;
+
 export const metadata: Metadata = {
   title: 'Blog',
   description: 'Property management insights, tips, and industry trends from the PropWise team.',
 };
 
-export default function BlogPage() {
-  const posts = getAllPosts();
+export default async function BlogPage() {
+  const posts = await getAllPosts();
 
   return (
     <div className="min-h-screen bg-[var(--pw-cream)]">
