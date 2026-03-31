@@ -81,7 +81,7 @@ export default function InboxPage() {
   }, [profile?.organizationId]);
 
   useEffect(() => {
-    if (!selectedConv) return;
+    if (!selectedConv || !profile?.organizationId) return;
     const q = query(
       collection(firestore, 'messages'),
       where('organizationId', '==', profile.organizationId),
@@ -92,7 +92,7 @@ export default function InboxPage() {
       setMessages(snap.docs.map((d) => ({ id: d.id, ...d.data() } as Message)));
       setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
     });
-  }, [selectedConv]);
+  }, [selectedConv, profile?.organizationId]);
 
   const filteredConversations = useMemo(() => {
     let result = [...conversations];

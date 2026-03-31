@@ -82,7 +82,7 @@ export default function SettingsPage() {
     const fetchOrg = async () => {
       const orgDoc = await getDoc(doc(firestore, 'organizations', profile.organizationId));
       if (orgDoc.exists()) {
-        const data = orgDoc.data();
+        const data = orgDoc.data() as typeof org & Record<string, unknown>;
         setOrg(data);
         setSettings({
           aiEnabled: data.settings.aiEnabled,
