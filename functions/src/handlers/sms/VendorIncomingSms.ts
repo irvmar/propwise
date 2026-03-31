@@ -2,7 +2,7 @@ import * as admin from 'firebase-admin';
 import { db } from '../../utils/firebase';
 import { logger } from '../../utils/logger';
 import { sendSms } from '../../services/twilio.service';
-import { COLLECTIONS, SMS_TEMPLATES, Vendor, Organization, WorkOrder, Property } from '../../shared';
+import { COLLECTIONS, SMS_TEMPLATES, Vendor, Organization, WorkOrder, Property, Unit } from '../../shared';
 
 const Timestamp = admin.firestore.Timestamp;
 const FieldValue = admin.firestore.FieldValue;
@@ -105,7 +105,7 @@ export async function dispatchToNextVendor(
 
   // Fetch unit for unit number
   const unitDoc = await db.collection(COLLECTIONS.units).doc(workOrder.unitId).get();
-  const unitNumber = unitDoc.exists ? (unitDoc.data() as any).number : 'N/A';
+  const unitNumber = unitDoc.exists ? (unitDoc.data() as Unit).number : 'N/A';
 
   // Send dispatch SMS to vendor
   await sendSms(

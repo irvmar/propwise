@@ -39,7 +39,7 @@ export async function sendSms(to: string, body: string, from?: string): Promise<
 }
 
 export function validateTwilioSignature(
-  req: { headers: Record<string, any>; protocol: string; get: (name: string) => string | undefined; originalUrl: string; body: any },
+  req: { headers: Record<string, string | string[] | undefined>; protocol: string; get: (name: string) => string | undefined; originalUrl: string; body: Record<string, string> },
 ): boolean {
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   if (!authToken) return false;

@@ -25,8 +25,8 @@ interface WorkOrder {
   vendorId?: string;
   scheduledDate?: string;
   source: string;
-  createdAt: any;
-  notes: Array<{ body: string; authorName: string; createdAt: any }>;
+  createdAt: { toDate?: () => Date };
+  notes: Array<{ body: string; authorName: string; createdAt: { toDate?: () => Date } }>;
 }
 
 interface Vendor {

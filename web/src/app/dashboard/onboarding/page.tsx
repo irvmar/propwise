@@ -40,7 +40,7 @@ export default function OnboardingPage() {
       escalationPhone: orgForm.escalationPhone || undefined,
     });
     if (result) {
-      setOrgId((result as any).id);
+      setOrgId((result as { id: string }).id);
       setStep(2);
     }
   };

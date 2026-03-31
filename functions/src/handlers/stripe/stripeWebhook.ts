@@ -27,9 +27,10 @@ export const stripeWebhook = onRequest(async (req, res) => {
   let event: Stripe.Event;
   try {
     event = constructWebhookEvent(req.rawBody, signature);
-  } catch (err: any) {
-    logger.error('Webhook signature verification failed', { error: err.message });
-    res.status(400).send(`Webhook Error: ${err.message}`);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error('Webhook signature verification failed', { error: message });
+    res.status(400).send(`Webhook Error: ${message}`);
     return;
   }
 
@@ -58,8 +59,9 @@ export const stripeWebhook = onRequest(async (req, res) => {
     }
 
     res.status(200).json({ received: true });
-  } catch (err: any) {
-    logger.error('Error processing webhook event', { type: event.type, error: err.message });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    logger.error('Error processing webhook event', { type: event.type, error: message });
     res.status(500).send('Webhook handler error');
   }
 });

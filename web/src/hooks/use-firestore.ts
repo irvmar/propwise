@@ -62,8 +62,8 @@ export function useCallable<TInput = unknown, TResult = unknown>(functionName: s
       const callable = httpsCallable<TInput, TResult>(functions, functionName);
       const result = await callable(data);
       return result.data;
-    } catch (err: any) {
-      setError(err.message || 'An error occurred');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
       return null;
     } finally {
       setLoading(false);

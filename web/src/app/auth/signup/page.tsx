@@ -59,8 +59,8 @@ export default function SignupPage() {
         createdAt: serverTimestamp(),
       });
       router.push('/dashboard/onboarding');
-    } catch (err: any) {
-      setError(err.message || 'Failed to create account');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to create account');
     } finally {
       setLoading(false);
     }
@@ -82,9 +82,10 @@ export default function SignupPage() {
         });
       }
       router.push('/dashboard/onboarding');
-    } catch (err: any) {
-      if (err.code !== 'auth/popup-closed-by-user') {
-        setError(err.message || 'Failed to sign up with Google');
+    } catch (err: unknown) {
+      const firebaseErr = err as { code?: string; message?: string };
+      if (firebaseErr.code !== 'auth/popup-closed-by-user') {
+        setError(firebaseErr.message || 'Failed to sign up with Google');
       }
     } finally {
       setGoogleLoading(false);

@@ -52,7 +52,19 @@ export interface DaySchedule {
 
 export type PlanTier = 'starter' | 'growth' | 'professional' | 'enterprise';
 
+/**
+ * Accepts both the serialized Firestore form ({_seconds, _nanoseconds}) and
+ * the admin SDK Timestamp class (which has seconds/nanoseconds getters plus
+ * toDate/toMillis helpers).
+ */
 export type FirebaseTimestamp = {
   _seconds: number;
   _nanoseconds: number;
+  toDate?: () => Date;
+  toMillis?: () => number;
+} | {
+  seconds: number;
+  nanoseconds: number;
+  toDate: () => Date;
+  toMillis: () => number;
 };

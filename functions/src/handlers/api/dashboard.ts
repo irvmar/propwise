@@ -220,7 +220,7 @@ export const updateWorkOrder = onCall(async (request) => {
       throw new HttpsError('not-found', 'Work order not found');
     }
 
-    const updateData: Record<string, any> = {
+    const updateData: Record<string, unknown> = {
       ...updates,
       updatedAt: Timestamp.now(),
     };

@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { AgentContext } from '../../agents/base.agent';
-import { Tenant, Organization, KnowledgeBase, WorkOrder } from '../../shared';
+import { Tenant, Organization, KnowledgeBase, WorkOrder, FirebaseTimestamp } from '../../shared';
 import { DEFAULT_EMERGENCY_KEYWORDS } from '../../shared/constants';
 
 // ─── Factory Functions ──────────────────────────────────────────────────────
@@ -19,8 +19,8 @@ export function makeTenant(overrides: Partial<Tenant> = {}): Tenant {
     rentAmount: 1500,
     balance: 0,
     status: 'active',
-    createdAt: { _seconds: 1700000000, _nanoseconds: 0 } as any,
-    updatedAt: { _seconds: 1700000000, _nanoseconds: 0 } as any,
+    createdAt: { _seconds: 1700000000, _nanoseconds: 0 } as FirebaseTimestamp,
+    updatedAt: { _seconds: 1700000000, _nanoseconds: 0 } as FirebaseTimestamp,
     ...overrides,
   };
 }
@@ -57,8 +57,8 @@ export function makeOrg(overrides: Partial<Organization> = {}): Organization {
     unitCount: 20,
     tenantCount: 18,
     monthlyMessageCount: 50,
-    createdAt: { _seconds: 1700000000, _nanoseconds: 0 } as any,
-    updatedAt: { _seconds: 1700000000, _nanoseconds: 0 } as any,
+    createdAt: { _seconds: 1700000000, _nanoseconds: 0 } as FirebaseTimestamp,
+    updatedAt: { _seconds: 1700000000, _nanoseconds: 0 } as FirebaseTimestamp,
     ...overrides,
   };
 }
@@ -134,8 +134,8 @@ export const TENANT_WITH_WORK_ORDERS = makeContext({
       notes: [],
       source: 'sms',
       photos: [],
-      createdAt: { _seconds: 1711900000, _nanoseconds: 0 } as any,
-      updatedAt: { _seconds: 1711900000, _nanoseconds: 0 } as any,
+      createdAt: { _seconds: 1711900000, _nanoseconds: 0 } as FirebaseTimestamp,
+      updatedAt: { _seconds: 1711900000, _nanoseconds: 0 } as FirebaseTimestamp,
     } as WorkOrder & { vendorName?: string },
     {
       id: 'wo-2',
@@ -151,8 +151,8 @@ export const TENANT_WITH_WORK_ORDERS = makeContext({
       notes: [],
       source: 'sms',
       photos: [],
-      createdAt: { _seconds: 1711950000, _nanoseconds: 0 } as any,
-      updatedAt: { _seconds: 1711950000, _nanoseconds: 0 } as any,
+      createdAt: { _seconds: 1711950000, _nanoseconds: 0 } as FirebaseTimestamp,
+      updatedAt: { _seconds: 1711950000, _nanoseconds: 0 } as FirebaseTimestamp,
     } as WorkOrder & { vendorName?: string },
   ],
 });
@@ -166,8 +166,8 @@ export const TENANT_WITH_KNOWLEDGE_BASE = makeContext({
       content: 'Quiet hours are from 10:00 PM to 8:00 AM daily. Please be mindful of noise during these times.',
       category: 'policies',
       isActive: true,
-      createdAt: { _seconds: 1700000000, _nanoseconds: 0 } as any,
-      updatedAt: { _seconds: 1700000000, _nanoseconds: 0 } as any,
+      createdAt: { _seconds: 1700000000, _nanoseconds: 0 } as FirebaseTimestamp,
+      updatedAt: { _seconds: 1700000000, _nanoseconds: 0 } as FirebaseTimestamp,
     },
     {
       id: 'kb-2',
@@ -176,8 +176,8 @@ export const TENANT_WITH_KNOWLEDGE_BASE = makeContext({
       content: 'Cats and small dogs (under 30 lbs) are allowed with a $500 pet deposit and $25/month pet rent. No exotic animals.',
       category: 'policies',
       isActive: true,
-      createdAt: { _seconds: 1700000000, _nanoseconds: 0 } as any,
-      updatedAt: { _seconds: 1700000000, _nanoseconds: 0 } as any,
+      createdAt: { _seconds: 1700000000, _nanoseconds: 0 } as FirebaseTimestamp,
+      updatedAt: { _seconds: 1700000000, _nanoseconds: 0 } as FirebaseTimestamp,
     },
     {
       id: 'kb-3',
@@ -186,8 +186,8 @@ export const TENANT_WITH_KNOWLEDGE_BASE = makeContext({
       content: 'Rent is due on the 1st of each month. Pay online at payments.sunsetproperties.com, by check, or by money order. A $50 late fee applies after the 5th.',
       category: 'payments',
       isActive: true,
-      createdAt: { _seconds: 1700000000, _nanoseconds: 0 } as any,
-      updatedAt: { _seconds: 1700000000, _nanoseconds: 0 } as any,
+      createdAt: { _seconds: 1700000000, _nanoseconds: 0 } as FirebaseTimestamp,
+      updatedAt: { _seconds: 1700000000, _nanoseconds: 0 } as FirebaseTimestamp,
     },
     {
       id: 'kb-4',
@@ -196,8 +196,8 @@ export const TENANT_WITH_KNOWLEDGE_BASE = makeContext({
       content: 'Each unit is assigned one parking spot. Guest parking is available in Lot B. No overnight guest parking without prior approval.',
       category: 'policies',
       isActive: true,
-      createdAt: { _seconds: 1700000000, _nanoseconds: 0 } as any,
-      updatedAt: { _seconds: 1700000000, _nanoseconds: 0 } as any,
+      createdAt: { _seconds: 1700000000, _nanoseconds: 0 } as FirebaseTimestamp,
+      updatedAt: { _seconds: 1700000000, _nanoseconds: 0 } as FirebaseTimestamp,
     },
   ],
 });

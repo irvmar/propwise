@@ -2,7 +2,7 @@ import { validateTwilioSignature } from '../services/twilio.service';
 import { logger } from '../utils/logger';
 
 export function requireTwilioSignature(
-  req: { headers: Record<string, any>; protocol: string; get: (name: string) => string | undefined; originalUrl: string; body: any },
+  req: { headers: Record<string, string | string[] | undefined>; protocol: string; get: (name: string) => string | undefined; originalUrl: string; body: Record<string, string> },
   res: { status: (code: number) => { send: (body: string) => void } },
 ): boolean {
   if (process.env.FUNCTIONS_EMULATOR === 'true') {

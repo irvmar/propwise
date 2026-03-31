@@ -21,6 +21,7 @@ import {
   KnowledgeBase,
   Unit,
   WorkOrder,
+  FirebaseTimestamp,
 } from '../../shared';
 import { handleVendorSms } from './VendorIncomingSms';
 
@@ -195,7 +196,7 @@ export const incomingSms = onRequest(async (req, res) => {
     if (convSnap.empty) {
       // Get unit number for display
       const unitDoc = await db.collection(COLLECTIONS.units).doc(tenant.unitId).get();
-      const unitNumber = unitDoc.exists ? (unitDoc.data() as any).number : 'N/A';
+      const unitNumber = unitDoc.exists ? (unitDoc.data() as Unit).number : 'N/A';
 
       conversationRef = db.collection(COLLECTIONS.conversations).doc();
       const newConversation: Omit<Conversation, 'id'> = {
@@ -206,12 +207,12 @@ export const incomingSms = onRequest(async (req, res) => {
         propertyId: tenant.propertyId,
         unitNumber,
         status: 'active',
-        lastMessageAt: Timestamp.now() as any,
+        lastMessageAt: Timestamp.now() as FirebaseTimestamp,
         lastMessagePreview: body.substring(0, 100),
         unreadCount: 1,
         isEscalated: false,
-        createdAt: Timestamp.now() as any,
-        updatedAt: Timestamp.now() as any,
+        createdAt: Timestamp.now() as FirebaseTimestamp,
+        updatedAt: Timestamp.now() as FirebaseTimestamp,
       };
       await conversationRef.set(newConversation);
     } else {
@@ -265,7 +266,7 @@ export const incomingSms = onRequest(async (req, res) => {
       twilioSid,
       status: 'received',
       ...(mediaUrls.length > 0 ? { mediaUrls } : {}),
-      createdAt: Timestamp.now() as any,
+      createdAt: Timestamp.now() as FirebaseTimestamp,
     };
     await db.collection(COLLECTIONS.messages).add(inboundMessage);
 
@@ -360,8 +361,8 @@ export const incomingSms = onRequest(async (req, res) => {
       intent: agentResponse.intent,
       confidence: agentResponse.confidence,
       agentType: agentResponse.intent,
-      createdAt: Timestamp.now() as any,
-      updatedAt: Timestamp.now() as any,
+      createdAt: Timestamp.now() as FirebaseTimestamp,
+      updatedAt: Timestamp.now() as FirebaseTimestamp,
     };
     await db.collection(COLLECTIONS.messages).add(outboundMessage);
 

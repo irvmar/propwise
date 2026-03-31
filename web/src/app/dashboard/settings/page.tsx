@@ -51,7 +51,22 @@ function UsageBar({ label, used, limit }: { label: string; used: number; limit: 
 
 export default function SettingsPage() {
   const { profile } = useAuth();
-  const [org, setOrg] = useState<any>(null);
+  const [org, setOrg] = useState<{
+    name: string;
+    plan: string;
+    twilioPhoneNumber?: string;
+    stripeSubscriptionId?: string;
+    paymentFailed?: boolean;
+    propertyCount: number;
+    unitCount: number;
+    monthlyMessageCount: number;
+    settings: {
+      aiEnabled: boolean;
+      autoRespond: boolean;
+      escalationEmail: string;
+      escalationPhone?: string;
+    };
+  } | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [billingLoading, setBillingLoading] = useState<string | null>(null);

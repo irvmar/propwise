@@ -24,7 +24,7 @@ interface Tenant {
   status: string;
   leaseStart: string;
   leaseEnd: string;
-  createdAt?: any;
+  createdAt?: { toDate?: () => Date };
 }
 
 interface Property { id: string; name: string; }
