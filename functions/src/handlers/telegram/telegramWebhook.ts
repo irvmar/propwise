@@ -234,8 +234,8 @@ async function handleApprove(
     return;
   }
 
-  if (doc.data()?.status === 'approved') {
-    await answerCallbackQuery(queryId, 'Already approved');
+  if (doc.data()?.status !== 'draft') {
+    await answerCallbackQuery(queryId, `Cannot approve — status is "${doc.data()?.status}"`);
     return;
   }
 
@@ -267,6 +267,12 @@ async function handleReject(
 
   if (!doc.exists) {
     await answerCallbackQuery(queryId, 'Post not found');
+    return;
+  }
+
+  const currentStatus = doc.data()?.status;
+  if (currentStatus !== 'draft') {
+    await answerCallbackQuery(queryId, `Cannot reject — status is "${currentStatus}"`);
     return;
   }
 
@@ -334,6 +340,12 @@ async function handlePosted(
 
   if (!doc.exists) {
     await answerCallbackQuery(queryId, 'Post not found');
+    return;
+  }
+
+  const postStatus = doc.data()?.status;
+  if (postStatus !== 'approved' && postStatus !== 'published') {
+    await answerCallbackQuery(queryId, `Cannot mark as posted — status is "${postStatus}"`);
     return;
   }
 

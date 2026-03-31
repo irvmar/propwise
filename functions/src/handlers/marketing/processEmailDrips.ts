@@ -135,11 +135,12 @@ export const processEmailDrips = onSchedule(
       }
     }
 
-    // Check bounce rate and alert if threshold exceeded (fire-and-forget)
+    // Check bounce rate (last 30 days) and alert if threshold exceeded
     try {
+      const thirtyDaysAgo = Timestamp.fromDate(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
       const [bouncedSnap, sentSnap] = await Promise.all([
-        db.collection(COLLECTIONS.emailEvents).where('type', '==', 'bounced').count().get(),
-        db.collection(COLLECTIONS.emailEvents).where('type', '==', 'sent').count().get(),
+        db.collection(COLLECTIONS.emailEvents).where('type', '==', 'bounced').where('timestamp', '>=', thirtyDaysAgo).count().get(),
+        db.collection(COLLECTIONS.emailEvents).where('type', '==', 'sent').where('timestamp', '>=', thirtyDaysAgo).count().get(),
       ]);
       const totalSent = sentSnap.data().count;
       const totalBounced = bouncedSnap.data().count;

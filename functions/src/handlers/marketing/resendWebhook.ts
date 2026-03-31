@@ -95,28 +95,48 @@ export const resendWebhook = onRequest(async (req, res) => {
     if (leadId) {
       const leadRef = db.collection(COLLECTIONS.leads).doc(leadId);
 
+      let transitionedToHot = false;
+      let hotLeadData: { name: string; email: string; company?: string; score: number; source: string } | null = null;
+
       await db.runTransaction(async (txn) => {
         const leadDoc = await txn.get(leadRef);
         if (!leadDoc.exists) return;
 
         const lead = leadDoc.data()!;
         const currentScore = lead.score || 0;
+        const previousStatus = lead.status;
         const updates: Record<string, unknown> = { updatedAt: Timestamp.now() };
 
         switch (ourType) {
           case 'opened': {
             const newScore = currentScore + 5;
             updates.score = newScore;
-            if (newScore >= 30 && lead.status !== 'hot' && lead.status !== 'converted') {
+            if (newScore >= 30 && previousStatus !== 'hot' && previousStatus !== 'converted') {
               updates.status = 'hot';
+              transitionedToHot = true;
+              hotLeadData = {
+                name: lead.name || 'Unknown',
+                email: lead.email || '',
+                company: lead.company,
+                score: newScore,
+                source: lead.source || 'unknown',
+              };
             }
             break;
           }
           case 'clicked': {
             const newScore = currentScore + 15;
             updates.score = newScore;
-            if (newScore >= 30 && lead.status !== 'hot' && lead.status !== 'converted') {
+            if (newScore >= 30 && previousStatus !== 'hot' && previousStatus !== 'converted') {
               updates.status = 'hot';
+              transitionedToHot = true;
+              hotLeadData = {
+                name: lead.name || 'Unknown',
+                email: lead.email || '',
+                company: lead.company,
+                score: newScore,
+                source: lead.source || 'unknown',
+              };
             }
             break;
           }
@@ -135,20 +155,11 @@ export const resendWebhook = onRequest(async (req, res) => {
         txn.update(leadRef, updates);
       });
 
-      // Notify on hot lead transition (fire-and-forget, outside transaction)
-      const updatedLeadDoc = await db.collection(COLLECTIONS.leads).doc(leadId).get();
-      const updatedLead = updatedLeadDoc.data();
-      if (updatedLead?.status === 'hot') {
+      // Notify on hot lead transition only (fire-and-forget, outside transaction)
+      if (transitionedToHot && hotLeadData) {
+        const leadInfo = hotLeadData;
         import('../../services/telegram.service')
-          .then(({ notifyHotLead }) =>
-            notifyHotLead({
-              name: updatedLead.name || 'Unknown',
-              email: updatedLead.email || '',
-              company: updatedLead.company,
-              score: updatedLead.score || 0,
-              source: updatedLead.source || 'unknown',
-            }),
-          )
+          .then(({ notifyHotLead }) => notifyHotLead(leadInfo))
           .catch(() => {}); // Silent — notification is non-critical
       }
 

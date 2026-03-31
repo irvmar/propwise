@@ -81,10 +81,23 @@ export async function editMessageText(
   keyboard?: InlineKeyboard,
 ): Promise<void> {
   const b = getBot();
-  await b.api.editMessageText(chatId, messageId, text, {
-    parse_mode: 'HTML',
-    ...(keyboard ? { reply_markup: keyboard } : {}),
-  });
+  // Try editMessageText first; if it fails (e.g., photo message), try editMessageCaption
+  try {
+    await b.api.editMessageText(chatId, messageId, text, {
+      parse_mode: 'HTML',
+      ...(keyboard ? { reply_markup: keyboard } : {}),
+    });
+  } catch {
+    try {
+      await b.api.editMessageCaption(chatId, messageId, {
+        caption: text,
+        parse_mode: 'HTML',
+        ...(keyboard ? { reply_markup: keyboard } : {}),
+      });
+    } catch {
+      // Message may be too old, deleted, or uneditable — skip silently
+    }
+  }
 }
 
 export async function answerCallbackQuery(
@@ -142,24 +155,31 @@ export async function notifyNewContent(posts: PostPreview[]): Promise<void> {
   if (!chatId || posts.length === 0) return;
 
   // Summary message
-  const platforms = [...new Set(posts.map((p) => p.platform))];
-  await sendMessage(
-    chatId,
-    `<b>New content generated</b>\n\n` +
-    `${posts.length} posts ready for review\n` +
-    `Platforms: ${platforms.join(', ')}\n` +
-    `Week: ${posts[0].campaignWeek}`,
-    buildBulkApprovalKeyboard(posts[0].campaignWeek),
-  );
+  try {
+    const platforms = [...new Set(posts.map((p) => p.platform))];
+    await sendMessage(
+      chatId,
+      `<b>New content generated</b>\n\n` +
+      `${posts.length} posts ready for review\n` +
+      `Platforms: ${platforms.join(', ')}\n` +
+      `Week: ${posts[0].campaignWeek}`,
+      buildBulkApprovalKeyboard(posts[0].campaignWeek),
+    );
+  } catch (err) {
+    logger.warn('Failed to send summary to Telegram', {
+      error: err instanceof Error ? err.message : 'Unknown',
+    });
+  }
 
   // Individual post previews
   for (const post of posts) {
     const preview = escapeHtml(post.content.slice(0, 200));
-    const tags = post.hashtags.slice(0, 3).join(' ');
-    const caption =
+    const tags = escapeHtml(post.hashtags.slice(0, 3).join(' '));
+    const caption = truncateCaption(
       `<b>${post.platform.toUpperCase()}</b> | ${post.dayOfWeek}\n\n` +
       `${preview}${post.content.length > 200 ? '...' : ''}\n` +
-      `${tags}`;
+      `${tags}`,
+    );
 
     try {
       if (post.imageUrl) {
@@ -273,12 +293,13 @@ export async function sendGuidedPublishingMessage(post: {
     ? `\nCharacters: <b>${charCount}/280</b>${charCount > 280 ? ' (over limit!)' : ''}`
     : '';
 
-  const caption =
+  const caption = truncateCaption(
     `<b>${header}</b>${charLabel}\n\n` +
     `───────────────────\n\n` +
     `${escapeHtml(fullText)}\n\n` +
     `───────────────────\n\n` +
-    `<a href="${composeLink}">Open ${post.platform === 'linkedin' ? 'LinkedIn' : 'Twitter'} to post</a>`;
+    `<a href="${composeLink}">Open ${post.platform === 'linkedin' ? 'LinkedIn' : 'Twitter'} to post</a>`,
+  );
 
   if (post.imageUrl) {
     await sendPhoto(chatId, post.imageUrl, caption, buildPostedKeyboard(post.id));
@@ -288,6 +309,12 @@ export async function sendGuidedPublishingMessage(post: {
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
+
+/** Telegram photo captions are limited to 1024 chars, text messages to 4096. */
+function truncateCaption(text: string, limit = 1024): string {
+  if (text.length <= limit) return text;
+  return text.slice(0, limit - 3) + '...';
+}
 
 function escapeHtml(text: string): string {
   return text
