@@ -19,27 +19,54 @@ The agent uses a tool-based agentic loop with two tools: `create_work_order` and
 
 ## Architecture
 
+**Event-driven backend.** Nothing runs until something happens — an SMS arrives (Twilio webhook), a document changes (Firestore trigger on work order creation, tenant onboarding), or a schedule fires (rent reminders, follow-ups, counter resets). Every function is stateless, triggered by an event, and scales to zero when idle.
+
 | Layer | Tech |
 |-------|------|
 | **SMS** | Twilio Programmable Messaging |
 | **AI** | Claude Sonnet (Anthropic SDK) with tool use |
-| **Backend** | Firebase Cloud Functions (TypeScript) |
+| **Backend** | Firebase Cloud Functions (TypeScript), event-driven |
 | **Database** | Firestore |
 | **Frontend** | Next.js 15 (App Router) + Tailwind + shadcn/ui |
 | **Payments** | Stripe subscriptions |
 | **Email** | Resend |
 
+## For Property Managers
+
+PMs sign up, connect their Twilio number, and configure the AI agent entirely through the dashboard — no code required.
+
+**Onboarding:** Add your properties, units, and tenants. Each tenant gets linked to a phone number. The moment a tenant texts your Twilio number, the AI is live.
+
+**Personalizing the agent:**
+
+- **Knowledge Base** — Add entries for policies (quiet hours, pet rules, parking), FAQs, payment info, amenities. The agent references these when tenants ask questions. No KB entry? The agent says "I don't have that info" and offers to connect with you instead of making things up.
+- **Emergency Keywords** — Customize what triggers an immediate escalation. Defaults include flood, fire, gas leak, etc. Add your own (e.g., "mold", "rats") per organization.
+- **Auto-Approval Threshold** — Set a dollar amount for maintenance requests that get auto-approved without PM review.
+- **Business Hours** — Configure per-day schedules. After-hours messages get a different response.
+- **Escalation Contact** — Set the phone/email where urgent escalations land.
+
+**Day-to-day:**
+
+- **Inbox** — See all tenant conversations in real time. The AI handles most messages, but you can jump in and reply manually at any point.
+- **Work Orders** — AI-created maintenance requests show up here with category, priority, and tenant photos. Assign vendors, track status through the full lifecycle (new > vendor contacted > assigned > scheduled > completed).
+- **Vendors** — Add contractors by specialty. When a work order is created, the system auto-dispatches to the right vendor via SMS. Vendors accept/decline by texting back.
+- **Tenants** — Manage tenant info, balances, lease dates. The agent uses this data in every response.
+- **Settings** — Toggle AI on/off, adjust all the personalization options above.
+
 ## Modules
 
-### `functions/` — Backend (Cloud Functions)
+### `functions/` — Backend (Event-Driven Cloud Functions)
 
 - **`agents/`** — SMS agent with fast-path detection (emergency keywords, escalation, greetings) and Claude-powered responses with tool calling
-- **`handlers/sms/`** — Twilio webhook handlers for tenant and vendor SMS
-- **`handlers/api/`** — Dashboard CRUD endpoints (27 functions)
-- **`handlers/scheduled/`** — Cron jobs: rent reminders, work order follow-ups, monthly counter resets
-- **`handlers/marketing/`** — Lead management, email drips, social content generation, blog drafts
+- **`handlers/sms/`** — Twilio webhook handlers for tenant and vendor SMS (event: inbound SMS)
+- **`handlers/api/`** — Dashboard CRUD endpoints (27 functions, event: HTTP request)
+- **`handlers/scheduled/`** — Rent reminders, work order follow-ups, counter resets (event: cron schedule)
+- **`handlers/stripe/`** — Subscription lifecycle (event: Stripe webhook)
+- **`handlers/marketing/`** — Lead management, email drips, social content, blog drafts
 - **`services/`** — Claude, Twilio, Stripe, Resend, Google Imagen integrations
 - **`evals/`** — LLM evaluation system (see below)
+
+**Firestore triggers:** `onWorkOrderCreated` (auto-dispatches to vendor), `onTenantCreated` (sends welcome SMS)
 
 ### `web/` — Frontend (Next.js)
 
