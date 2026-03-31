@@ -22,6 +22,10 @@ export function useCollection<T = DocumentData>(
   const [loading, setLoading] = useState(true);
   const { profile } = useAuth();
 
+  // Serialize constraints to a stable string for the dependency array.
+  // This ensures the listener re-subscribes when constraints change.
+  const constraintsKey = JSON.stringify(constraints.map((c) => `${c}`));
+
   useEffect(() => {
     if (!profile?.organizationId) return;
 
@@ -41,7 +45,8 @@ export function useCollection<T = DocumentData>(
     });
 
     return unsubscribe;
-  }, [collectionName, profile?.organizationId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [collectionName, profile?.organizationId, constraintsKey]);
 
   return { data, loading };
 }

@@ -32,8 +32,10 @@ export interface Message {
   intent?: IntentCategory;
   confidence?: number;
   agentType?: string;
+  mediaUrls?: string[];
   metadata?: Record<string, unknown>;
   createdAt: FirebaseTimestamp;
+  updatedAt?: FirebaseTimestamp;
 }
 
 export type MessageDirection = 'inbound' | 'outbound';

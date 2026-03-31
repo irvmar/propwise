@@ -103,7 +103,12 @@ export const PLAN_TIERS: Record<PlanTier, PlanConfig> = {
 //   STRIPE_PRICE_GROWTH, STRIPE_PRICE_PROFESSIONAL, STRIPE_PRICE_ENTERPRISE
 // Falls back to placeholder values for local development.
 function getStripePriceId(plan: string): string {
-  return process.env[`STRIPE_PRICE_${plan.toUpperCase()}`] || `price_${plan}_monthly`;
+  const envKey = `STRIPE_PRICE_${plan.toUpperCase()}`;
+  const value = process.env[envKey];
+  if (!value && !process.env.FUNCTIONS_EMULATOR) {
+    console.warn(`[PropWise] Missing ${envKey} — using placeholder price ID`);
+  }
+  return value || `price_${plan}_monthly`;
 }
 
 export const STRIPE_PRICE_IDS: Record<string, PlanTier> = {

@@ -140,12 +140,14 @@ export const createUnit = onCall(async (request) => {
       createdAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     });
-    await db.collection(COLLECTIONS.properties).doc(input.propertyId).update({
+    const counterBatch = db.batch();
+    counterBatch.update(db.collection(COLLECTIONS.properties).doc(input.propertyId), {
       unitCount: FieldValue.increment(1),
     });
-    await db.collection(COLLECTIONS.organizations).doc(orgId).update({
+    counterBatch.update(db.collection(COLLECTIONS.organizations).doc(orgId), {
       unitCount: FieldValue.increment(1),
     });
+    await counterBatch.commit();
     return { id: ref.id };
   } catch (error) {
     throw toHttpsError(error);

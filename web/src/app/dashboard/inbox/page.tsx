@@ -84,6 +84,7 @@ export default function InboxPage() {
     if (!selectedConv) return;
     const q = query(
       collection(firestore, 'messages'),
+      where('organizationId', '==', profile.organizationId),
       where('conversationId', '==', selectedConv),
       orderBy('createdAt', 'asc'),
     );

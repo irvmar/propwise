@@ -181,6 +181,7 @@ export async function handleVendorSms(
   const orgDoc = await db.collection(COLLECTIONS.organizations).doc(workOrder.organizationId).get();
   if (!orgDoc.exists) {
     logger.error('Organization not found for work order', { orgId: workOrder.organizationId });
+    await sendSms(fromPhone, 'Sorry, we encountered a system error. Please contact the property manager directly.');
     return;
   }
   const org = { id: orgDoc.id, ...orgDoc.data() } as Organization;

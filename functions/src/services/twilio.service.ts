@@ -10,7 +10,13 @@ const getTwilioClient = () => {
   return twilio(accountSid, authToken);
 };
 
+const E164_REGEX = /^\+[1-9]\d{1,14}$/;
+
 export async function sendSms(to: string, body: string, from?: string): Promise<string> {
+  if (!to || !E164_REGEX.test(to)) {
+    throw new Error(`Invalid phone number format: ${to}`);
+  }
+
   const client = getTwilioClient();
   const fromNumber = from || process.env.TWILIO_PHONE_NUMBER;
   if (!fromNumber) {

@@ -162,6 +162,10 @@ export const incomingSms = onRequest(async (req, res) => {
     }
 
     // 3.5 Plan enforcement: check monthly message limit
+    // Note: This is a soft limit. The read-check-increment is not atomic, so under
+    // high concurrency a tenant could exceed the limit by 1-2 messages. This is
+    // acceptable — plan limits are not billing-critical, and a Firestore transaction
+    // here would add latency to every SMS.
     const { config: planConfig } = await getOrgPlanInfo(organization.id);
     if (!isWithinMessageLimit(organization, planConfig)) {
       logger.warn('Monthly message limit reached', {
@@ -252,7 +256,7 @@ export const incomingSms = onRequest(async (req, res) => {
     }
 
     // 5. Save inbound message
-    const inboundMessage: Omit<Message, 'id'> & { mediaUrls?: string[] } = {
+    const inboundMessage: Omit<Message, 'id'> = {
       conversationId: conversationRef.id,
       organizationId: tenant.organizationId,
       direction: 'inbound',
@@ -260,8 +264,8 @@ export const incomingSms = onRequest(async (req, res) => {
       body,
       twilioSid,
       status: 'received',
-      createdAt: Timestamp.now() as any,
       ...(mediaUrls.length > 0 ? { mediaUrls } : {}),
+      createdAt: Timestamp.now() as any,
     };
     await db.collection(COLLECTIONS.messages).add(inboundMessage);
 
@@ -357,6 +361,7 @@ export const incomingSms = onRequest(async (req, res) => {
       confidence: agentResponse.confidence,
       agentType: agentResponse.intent,
       createdAt: Timestamp.now() as any,
+      updatedAt: Timestamp.now() as any,
     };
     await db.collection(COLLECTIONS.messages).add(outboundMessage);
 

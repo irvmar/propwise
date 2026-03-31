@@ -1,3 +1,12 @@
+// ─── Startup Validation ──────────────────────────────────────────────────────
+// Warn (don't throw) about missing env vars at cold start so issues surface
+// in logs immediately rather than on first request.
+const REQUIRED_ENV = ['TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'TWILIO_PHONE_NUMBER', 'ANTHROPIC_API_KEY'];
+const missingEnv = REQUIRED_ENV.filter((v) => !process.env[v]);
+if (missingEnv.length > 0 && !process.env.FUNCTIONS_EMULATOR) {
+  console.error(`[PropWise] Missing required environment variables: ${missingEnv.join(', ')}`);
+}
+
 // SMS Handlers
 export { incomingSms } from './handlers/sms/IncomingSms';
 export { smsStatusCallback } from './handlers/sms/SmsStatusCallback';

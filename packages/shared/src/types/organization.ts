@@ -6,6 +6,7 @@ export interface Organization {
   plan: PlanTier;
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
+  paymentFailed?: boolean;
   twilioPhoneNumber?: string;
   settings: OrganizationSettings;
   propertyCount: number;

@@ -110,3 +110,21 @@ export interface CampaignMetrics {
   socialPostsPublished: number;
   blogPostsPublished: number;
 }
+
+// ─── Blog Draft ─────────────────────────────────────────────────────
+
+export type BlogDraftStatus = 'draft' | 'published';
+
+export interface BlogDraft {
+  id: string;
+  topic: string;
+  targetKeywords: string[];
+  angle?: string;
+  wordCount: number;
+  mdxContent: string;
+  status: BlogDraftStatus;
+  createdBy: string;
+  tokensUsed: number;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+}

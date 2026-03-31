@@ -63,13 +63,18 @@ export async function callWithTools(
     toolCount: tools.length,
   });
 
-  let response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 1024,
-    system: systemWithCache,
-    messages: currentMessages,
-    tools: toolsWithCache,
-  });
+  const API_TIMEOUT = 25000; // 25s — short enough to avoid Twilio webhook retry
+
+  let response = await anthropic.messages.create(
+    {
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1024,
+      system: systemWithCache,
+      messages: currentMessages,
+      tools: toolsWithCache,
+    },
+    { timeout: API_TIMEOUT },
+  );
 
   logger.info('Claude response received', {
     stopReason: response.stop_reason,
@@ -122,13 +127,16 @@ export async function callWithTools(
       toolResultCount: toolResults.length,
     });
 
-    response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1024,
-      system: systemWithCache,
-      messages: currentMessages,
-      tools: toolsWithCache,
-    });
+    response = await anthropic.messages.create(
+      {
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1024,
+        system: systemWithCache,
+        messages: currentMessages,
+        tools: toolsWithCache,
+      },
+      { timeout: API_TIMEOUT },
+    );
 
     logger.info('Claude continuation response', {
       stopReason: response.stop_reason,
