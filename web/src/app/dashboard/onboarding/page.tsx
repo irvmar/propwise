@@ -76,12 +76,12 @@ export default function OnboardingPage() {
         </CardHeader>
         <CardContent>
           {step === 1 && (
-            <div className="space-y-4">
+            <div className="space-y-5">
               <h3 className="font-semibold text-[var(--pw-ink)]">Create Your Organization</h3>
               {orgError && <div className="p-3 text-sm text-red-600 bg-red-50 rounded-md">{orgError}</div>}
-              <div><Label>Company Name</Label><Input value={orgForm.name} onChange={(e) => setOrgForm({ ...orgForm, name: e.target.value })} placeholder="ABC Property Management" /></div>
-              <div><Label>Escalation Email</Label><Input type="email" value={orgForm.escalationEmail} onChange={(e) => setOrgForm({ ...orgForm, escalationEmail: e.target.value })} placeholder="manager@company.com" /></div>
-              <div><Label>Escalation Phone (optional)</Label><Input value={orgForm.escalationPhone} onChange={(e) => setOrgForm({ ...orgForm, escalationPhone: e.target.value })} placeholder="+15551234567" /></div>
+              <div className="space-y-2"><Label>Company Name</Label><Input value={orgForm.name} onChange={(e) => setOrgForm({ ...orgForm, name: e.target.value })} placeholder="ABC Property Management" /></div>
+              <div className="space-y-2"><Label>Escalation Email</Label><Input type="email" value={orgForm.escalationEmail} onChange={(e) => setOrgForm({ ...orgForm, escalationEmail: e.target.value })} placeholder="manager@company.com" /></div>
+              <div className="space-y-2"><Label>Escalation Phone (optional)</Label><Input value={orgForm.escalationPhone} onChange={(e) => setOrgForm({ ...orgForm, escalationPhone: e.target.value })} placeholder="+15551234567" /></div>
               <Button onClick={handleCreateOrg} disabled={creatingOrg || !orgForm.name || !orgForm.escalationEmail} className="w-full">
                 {creatingOrg ? 'Creating...' : 'Continue'}
               </Button>
@@ -89,14 +89,14 @@ export default function OnboardingPage() {
           )}
 
           {step === 2 && (
-            <div className="space-y-4">
+            <div className="space-y-5">
               <h3 className="font-semibold text-[var(--pw-ink)]">Add Your First Property</h3>
-              <div><Label>Property Name</Label><Input value={propForm.name} onChange={(e) => setPropForm({ ...propForm, name: e.target.value })} placeholder="Sunset Apartments" /></div>
-              <div><Label>Street</Label><Input value={propForm.street} onChange={(e) => setPropForm({ ...propForm, street: e.target.value })} /></div>
-              <div className="grid grid-cols-3 gap-2">
-                <div><Label>City</Label><Input value={propForm.city} onChange={(e) => setPropForm({ ...propForm, city: e.target.value })} /></div>
-                <div><Label>State</Label><Input value={propForm.state} onChange={(e) => setPropForm({ ...propForm, state: e.target.value })} maxLength={2} /></div>
-                <div><Label>ZIP</Label><Input value={propForm.zip} onChange={(e) => setPropForm({ ...propForm, zip: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Property Name</Label><Input value={propForm.name} onChange={(e) => setPropForm({ ...propForm, name: e.target.value })} placeholder="Sunset Apartments" /></div>
+              <div className="space-y-2"><Label>Street</Label><Input value={propForm.street} onChange={(e) => setPropForm({ ...propForm, street: e.target.value })} /></div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2"><Label>City</Label><Input value={propForm.city} onChange={(e) => setPropForm({ ...propForm, city: e.target.value })} /></div>
+                <div className="space-y-2"><Label>State</Label><Input value={propForm.state} onChange={(e) => setPropForm({ ...propForm, state: e.target.value })} maxLength={2} /></div>
+                <div className="space-y-2"><Label>ZIP</Label><Input value={propForm.zip} onChange={(e) => setPropForm({ ...propForm, zip: e.target.value })} /></div>
               </div>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={() => setStep(3)} className="flex-1 border-[var(--pw-border)]">Skip for now</Button>
@@ -108,7 +108,7 @@ export default function OnboardingPage() {
           )}
 
           {step === 3 && (
-            <div className="space-y-4 text-center">
+            <div className="space-y-5 text-center">
               <div className="w-16 h-16 mx-auto bg-[var(--pw-sage-soft)] rounded-full flex items-center justify-center">
                 <svg className="w-8 h-8 text-[var(--pw-sage)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />

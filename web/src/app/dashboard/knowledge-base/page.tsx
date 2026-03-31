@@ -102,9 +102,9 @@ export default function KnowledgeBasePage() {
           <DialogTrigger asChild><Button>Add Entry</Button></DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle className="font-heading">Add Knowledge Base Entry</DialogTitle></DialogHeader>
-            <div className="space-y-4">
-              <div><Label>Title</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g., Pet Policy" /></div>
-              <div>
+            <div className="space-y-5">
+              <div className="space-y-2"><Label>Title</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g., Pet Policy" /></div>
+              <div className="space-y-2">
                 <Label>Category</Label>
                 <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -113,7 +113,7 @@ export default function KnowledgeBasePage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label>Content</Label>
                 <Textarea
                   value={form.content}
@@ -171,9 +171,9 @@ export default function KnowledgeBasePage() {
       <Dialog open={!!editEntry} onOpenChange={(open) => !open && setEditEntry(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle className="font-heading">Edit Knowledge Base Entry</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div><Label>Title</Label><Input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} /></div>
-            <div>
+          <div className="space-y-5">
+            <div className="space-y-2"><Label>Title</Label><Input value={editForm.title} onChange={(e) => setEditForm({ ...editForm, title: e.target.value })} /></div>
+            <div className="space-y-2">
               <Label>Category</Label>
               <Select value={editForm.category} onValueChange={(v) => setEditForm({ ...editForm, category: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -182,7 +182,7 @@ export default function KnowledgeBasePage() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="space-y-2">
               <Label>Content</Label>
               <Textarea value={editForm.content} onChange={(e) => setEditForm({ ...editForm, content: e.target.value })} rows={6} />
             </div>

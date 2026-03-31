@@ -217,15 +217,15 @@ export default function PropertiesPage() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle className="font-heading">Add Property</DialogTitle></DialogHeader>
-            <div className="space-y-4">
-              <div><Label>Name</Label><Input value={propForm.name} onChange={(e) => setPropForm({ ...propForm, name: e.target.value })} /></div>
-              <div><Label>Street</Label><Input value={propForm.street} onChange={(e) => setPropForm({ ...propForm, street: e.target.value })} /></div>
-              <div className="grid grid-cols-3 gap-2">
-                <div><Label>City</Label><Input value={propForm.city} onChange={(e) => setPropForm({ ...propForm, city: e.target.value })} /></div>
-                <div><Label>State</Label><Input value={propForm.state} onChange={(e) => setPropForm({ ...propForm, state: e.target.value })} maxLength={2} /></div>
-                <div><Label>ZIP</Label><Input value={propForm.zip} onChange={(e) => setPropForm({ ...propForm, zip: e.target.value })} /></div>
+            <div className="space-y-5">
+              <div className="space-y-2"><Label>Name</Label><Input value={propForm.name} onChange={(e) => setPropForm({ ...propForm, name: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Street</Label><Input value={propForm.street} onChange={(e) => setPropForm({ ...propForm, street: e.target.value })} /></div>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2"><Label>City</Label><Input value={propForm.city} onChange={(e) => setPropForm({ ...propForm, city: e.target.value })} /></div>
+                <div className="space-y-2"><Label>State</Label><Input value={propForm.state} onChange={(e) => setPropForm({ ...propForm, state: e.target.value })} maxLength={2} /></div>
+                <div className="space-y-2"><Label>ZIP</Label><Input value={propForm.zip} onChange={(e) => setPropForm({ ...propForm, zip: e.target.value })} /></div>
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label>Type</Label>
                 <Select value={propForm.type} onValueChange={(v) => setPropForm({ ...propForm, type: v })}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -325,7 +325,7 @@ export default function PropertiesPage() {
                   {propUnits.length > 0 && (
                     <div className="space-y-2">
                       {propUnits.map((unit) => (
-                        <div key={unit.id} className="flex items-center justify-between p-2 bg-[var(--pw-warm)] rounded-lg text-sm">
+                        <div key={unit.id} className="flex items-center justify-between p-4 bg-[var(--pw-warm)] rounded-lg text-sm">
                           <span className="text-[var(--pw-ink)]">Unit {unit.number}</span>
                           <div className="flex items-center gap-2">
                             <span className="text-[var(--pw-slate)]">${unit.rentAmount}/mo</span>
@@ -368,15 +368,15 @@ export default function PropertiesPage() {
       <Dialog open={showAddUnit} onOpenChange={setShowAddUnit}>
         <DialogContent>
           <DialogHeader><DialogTitle className="font-heading">Add Unit</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div><Label>Unit Number</Label><Input value={unitForm.number} onChange={(e) => setUnitForm({ ...unitForm, number: e.target.value })} /></div>
-            <div className="grid grid-cols-2 gap-2">
-              <div><Label>Bedrooms</Label><Input type="number" value={unitForm.bedrooms} onChange={(e) => setUnitForm({ ...unitForm, bedrooms: e.target.value })} /></div>
-              <div><Label>Bathrooms</Label><Input type="number" step="0.5" value={unitForm.bathrooms} onChange={(e) => setUnitForm({ ...unitForm, bathrooms: e.target.value })} /></div>
+          <div className="space-y-5">
+            <div className="space-y-2"><Label>Unit Number</Label><Input value={unitForm.number} onChange={(e) => setUnitForm({ ...unitForm, number: e.target.value })} /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Bedrooms</Label><Input type="number" value={unitForm.bedrooms} onChange={(e) => setUnitForm({ ...unitForm, bedrooms: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Bathrooms</Label><Input type="number" step="0.5" value={unitForm.bathrooms} onChange={(e) => setUnitForm({ ...unitForm, bathrooms: e.target.value })} /></div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div><Label>Rent Amount ($)</Label><Input type="number" value={unitForm.rentAmount} onChange={(e) => setUnitForm({ ...unitForm, rentAmount: e.target.value })} /></div>
-              <div><Label>Rent Due Day</Label><Input type="number" min="1" max="28" value={unitForm.rentDueDay} onChange={(e) => setUnitForm({ ...unitForm, rentDueDay: e.target.value })} /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Rent Amount ($)</Label><Input type="number" value={unitForm.rentAmount} onChange={(e) => setUnitForm({ ...unitForm, rentAmount: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Rent Due Day</Label><Input type="number" min="1" max="28" value={unitForm.rentDueDay} onChange={(e) => setUnitForm({ ...unitForm, rentDueDay: e.target.value })} /></div>
             </div>
             <Button onClick={handleAddUnit} disabled={creatingUnit} className="w-full">
               {creatingUnit ? 'Creating...' : 'Create Unit'}
@@ -389,15 +389,15 @@ export default function PropertiesPage() {
       <Dialog open={!!editProperty} onOpenChange={(open) => !open && setEditProperty(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle className="font-heading">Edit Property</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div><Label>Name</Label><Input value={editPropForm.name} onChange={(e) => setEditPropForm({ ...editPropForm, name: e.target.value })} /></div>
-            <div><Label>Street</Label><Input value={editPropForm.street} onChange={(e) => setEditPropForm({ ...editPropForm, street: e.target.value })} /></div>
-            <div className="grid grid-cols-3 gap-2">
-              <div><Label>City</Label><Input value={editPropForm.city} onChange={(e) => setEditPropForm({ ...editPropForm, city: e.target.value })} /></div>
-              <div><Label>State</Label><Input value={editPropForm.state} onChange={(e) => setEditPropForm({ ...editPropForm, state: e.target.value })} maxLength={2} /></div>
-              <div><Label>ZIP</Label><Input value={editPropForm.zip} onChange={(e) => setEditPropForm({ ...editPropForm, zip: e.target.value })} /></div>
+          <div className="space-y-5">
+            <div className="space-y-2"><Label>Name</Label><Input value={editPropForm.name} onChange={(e) => setEditPropForm({ ...editPropForm, name: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Street</Label><Input value={editPropForm.street} onChange={(e) => setEditPropForm({ ...editPropForm, street: e.target.value })} /></div>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2"><Label>City</Label><Input value={editPropForm.city} onChange={(e) => setEditPropForm({ ...editPropForm, city: e.target.value })} /></div>
+              <div className="space-y-2"><Label>State</Label><Input value={editPropForm.state} onChange={(e) => setEditPropForm({ ...editPropForm, state: e.target.value })} maxLength={2} /></div>
+              <div className="space-y-2"><Label>ZIP</Label><Input value={editPropForm.zip} onChange={(e) => setEditPropForm({ ...editPropForm, zip: e.target.value })} /></div>
             </div>
-            <div>
+            <div className="space-y-2">
               <Label>Type</Label>
               <Select value={editPropForm.type} onValueChange={(v) => setEditPropForm({ ...editPropForm, type: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -437,15 +437,15 @@ export default function PropertiesPage() {
       <Dialog open={!!editUnit} onOpenChange={(open) => !open && setEditUnit(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle className="font-heading">Edit Unit</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div><Label>Unit Number</Label><Input value={editUnitForm.number} onChange={(e) => setEditUnitForm({ ...editUnitForm, number: e.target.value })} /></div>
-            <div className="grid grid-cols-2 gap-2">
-              <div><Label>Bedrooms</Label><Input type="number" value={editUnitForm.bedrooms} onChange={(e) => setEditUnitForm({ ...editUnitForm, bedrooms: e.target.value })} /></div>
-              <div><Label>Bathrooms</Label><Input type="number" step="0.5" value={editUnitForm.bathrooms} onChange={(e) => setEditUnitForm({ ...editUnitForm, bathrooms: e.target.value })} /></div>
+          <div className="space-y-5">
+            <div className="space-y-2"><Label>Unit Number</Label><Input value={editUnitForm.number} onChange={(e) => setEditUnitForm({ ...editUnitForm, number: e.target.value })} /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Bedrooms</Label><Input type="number" value={editUnitForm.bedrooms} onChange={(e) => setEditUnitForm({ ...editUnitForm, bedrooms: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Bathrooms</Label><Input type="number" step="0.5" value={editUnitForm.bathrooms} onChange={(e) => setEditUnitForm({ ...editUnitForm, bathrooms: e.target.value })} /></div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div><Label>Rent Amount ($)</Label><Input type="number" value={editUnitForm.rentAmount} onChange={(e) => setEditUnitForm({ ...editUnitForm, rentAmount: e.target.value })} /></div>
-              <div><Label>Rent Due Day</Label><Input type="number" min="1" max="28" value={editUnitForm.rentDueDay} onChange={(e) => setEditUnitForm({ ...editUnitForm, rentDueDay: e.target.value })} /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Rent Amount ($)</Label><Input type="number" value={editUnitForm.rentAmount} onChange={(e) => setEditUnitForm({ ...editUnitForm, rentAmount: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Rent Due Day</Label><Input type="number" min="1" max="28" value={editUnitForm.rentDueDay} onChange={(e) => setEditUnitForm({ ...editUnitForm, rentDueDay: e.target.value })} /></div>
             </div>
             <Button onClick={handleEditUnit} disabled={updatingUnit} className="w-full">
               {updatingUnit ? 'Saving...' : 'Save Changes'}

@@ -213,16 +213,16 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="font-heading">Organization</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
+          <CardContent className="space-y-5">
+            <div className="space-y-2">
               <Label className="text-[var(--pw-slate)]">Name</Label>
               <p className="font-medium text-[var(--pw-ink)]">{org?.name}</p>
             </div>
-            <div>
+            <div className="space-y-2">
               <Label className="text-[var(--pw-slate)]">Plan</Label>
               <Badge className="ml-2">{planInfo.name}{planInfo.price > 0 ? ` — $${planInfo.price}/mo` : ''}</Badge>
             </div>
-            <div>
+            <div className="space-y-2">
               <Label className="text-[var(--pw-slate)]">Twilio Number</Label>
               <p className="font-medium text-[var(--pw-ink)]">{org?.twilioPhoneNumber || 'Not configured'}</p>
             </div>
@@ -251,8 +251,8 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="font-heading">Billing</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
+          <CardContent className="space-y-5">
+            <div className="space-y-2">
               <Label className="text-[var(--pw-slate)]">Current Plan</Label>
               <p className="font-medium text-lg text-[var(--pw-ink)]">{planInfo.name}</p>
               <p className="text-sm text-[var(--pw-slate)]">{planInfo.description}</p>
@@ -261,11 +261,11 @@ export default function SettingsPage() {
             {upgradePlans.length > 0 && (
               <div>
                 <Label className="text-[var(--pw-slate)] mb-2 block">Upgrade</Label>
-                <div className="space-y-2">
+                <div className="space-y-4">
                   {upgradePlans.map((planId) => {
                     const plan = PLAN_DETAILS[planId];
                     return (
-                      <div key={planId} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 border border-[var(--pw-border)] rounded-lg gap-3">
+                      <div key={planId} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-[var(--pw-border)] rounded-lg gap-3">
                         <div>
                           <p className="font-medium text-[var(--pw-ink)]">{plan.name} — ${plan.price}/mo</p>
                           <p className="text-sm text-[var(--pw-slate)]">{plan.description}</p>
@@ -329,15 +329,15 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="font-heading">Escalation</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
+          <CardContent className="space-y-5">
+            <div className="space-y-2">
               <Label>Escalation Email</Label>
               <Input
                 value={settings.escalationEmail}
                 onChange={(e) => setSettings({ ...settings, escalationEmail: e.target.value })}
               />
             </div>
-            <div>
+            <div className="space-y-2">
               <Label>Escalation Phone (for emergencies)</Label>
               <Input
                 value={settings.escalationPhone}

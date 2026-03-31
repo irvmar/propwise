@@ -185,7 +185,7 @@ export default function InboxPage() {
           'w-full md:w-80 md:shrink-0 flex flex-col border-[var(--pw-border)]',
           showThread ? 'hidden md:flex' : 'flex',
         )}>
-          <div className="p-3 border-b border-[var(--pw-border)] space-y-2">
+          <div className="p-3 border-b border-[var(--pw-border)] space-y-3">
             <Input placeholder="Search name, phone, message..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="h-8 text-sm" />
             <div className="flex gap-2">
               <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -280,7 +280,7 @@ export default function InboxPage() {
               </div>
 
               <ScrollArea className="flex-1 p-4">
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {messages.map((msg) => (
                     <div
                       key={msg.id}

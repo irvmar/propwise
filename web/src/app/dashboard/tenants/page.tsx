@@ -193,14 +193,14 @@ export default function TenantsPage() {
           <DialogTrigger asChild><Button>Add Tenant</Button></DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader><DialogTitle className="font-heading">Add Tenant</DialogTitle></DialogHeader>
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-2">
-                <div><Label>First Name</Label><Input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} /></div>
-                <div><Label>Last Name</Label><Input value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} /></div>
+            <div className="space-y-5">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2"><Label>First Name</Label><Input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} /></div>
+                <div className="space-y-2"><Label>Last Name</Label><Input value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} /></div>
               </div>
-              <div><Label>Phone (E.164)</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+15551234567" /></div>
-              <div><Label>Email (optional)</Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
-              <div>
+              <div className="space-y-2"><Label>Phone (E.164)</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+15551234567" /></div>
+              <div className="space-y-2"><Label>Email (optional)</Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+              <div className="space-y-2">
                 <Label>Property</Label>
                 <Select value={form.propertyId} onValueChange={(v) => setForm({ ...form, propertyId: v, unitId: '' })}>
                   <SelectTrigger><SelectValue placeholder="Select property" /></SelectTrigger>
@@ -209,7 +209,7 @@ export default function TenantsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label>Unit</Label>
                 <Select value={form.unitId} onValueChange={(v) => setForm({ ...form, unitId: v })}>
                   <SelectTrigger><SelectValue placeholder="Select unit" /></SelectTrigger>
@@ -218,10 +218,10 @@ export default function TenantsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div><Label>Rent Amount ($)</Label><Input type="number" value={form.rentAmount} onChange={(e) => setForm({ ...form, rentAmount: e.target.value })} /></div>
-              <div className="grid grid-cols-2 gap-2">
-                <div><Label>Lease Start</Label><Input type="date" value={form.leaseStart} onChange={(e) => setForm({ ...form, leaseStart: e.target.value })} /></div>
-                <div><Label>Lease End</Label><Input type="date" value={form.leaseEnd} onChange={(e) => setForm({ ...form, leaseEnd: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Rent Amount ($)</Label><Input type="number" value={form.rentAmount} onChange={(e) => setForm({ ...form, rentAmount: e.target.value })} /></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2"><Label>Lease Start</Label><Input type="date" value={form.leaseStart} onChange={(e) => setForm({ ...form, leaseStart: e.target.value })} /></div>
+                <div className="space-y-2"><Label>Lease End</Label><Input type="date" value={form.leaseEnd} onChange={(e) => setForm({ ...form, leaseEnd: e.target.value })} /></div>
               </div>
               <Button onClick={handleAdd} disabled={creating} className="w-full">
                 {creating ? 'Creating...' : 'Add Tenant'}
@@ -299,19 +299,19 @@ export default function TenantsPage() {
       <Dialog open={!!editTenant} onOpenChange={(open) => !open && setEditTenant(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle className="font-heading">Edit Tenant</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-2">
-              <div><Label>First Name</Label><Input value={editForm.firstName} onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })} /></div>
-              <div><Label>Last Name</Label><Input value={editForm.lastName} onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })} /></div>
+          <div className="space-y-5">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>First Name</Label><Input value={editForm.firstName} onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Last Name</Label><Input value={editForm.lastName} onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })} /></div>
             </div>
-            <div><Label>Phone (E.164)</Label><Input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} /></div>
-            <div><Label>Email</Label><Input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} /></div>
-            <div><Label>Rent Amount ($)</Label><Input type="number" value={editForm.rentAmount} onChange={(e) => setEditForm({ ...editForm, rentAmount: e.target.value })} /></div>
-            <div className="grid grid-cols-2 gap-2">
-              <div><Label>Lease Start</Label><Input type="date" value={editForm.leaseStart} onChange={(e) => setEditForm({ ...editForm, leaseStart: e.target.value })} /></div>
-              <div><Label>Lease End</Label><Input type="date" value={editForm.leaseEnd} onChange={(e) => setEditForm({ ...editForm, leaseEnd: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Phone (E.164)</Label><Input value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Email</Label><Input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} /></div>
+            <div className="space-y-2"><Label>Rent Amount ($)</Label><Input type="number" value={editForm.rentAmount} onChange={(e) => setEditForm({ ...editForm, rentAmount: e.target.value })} /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Lease Start</Label><Input type="date" value={editForm.leaseStart} onChange={(e) => setEditForm({ ...editForm, leaseStart: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Lease End</Label><Input type="date" value={editForm.leaseEnd} onChange={(e) => setEditForm({ ...editForm, leaseEnd: e.target.value })} /></div>
             </div>
-            <div>
+            <div className="space-y-2">
               <Label>Status</Label>
               <Select value={editForm.status} onValueChange={(v) => setEditForm({ ...editForm, status: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>

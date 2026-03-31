@@ -249,7 +249,7 @@ export default function WorkOrdersPage() {
                 <CardContent className="pt-6">
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <div className="flex items-center gap-2 mb-3 flex-wrap">
                         <h3 className="font-semibold text-[var(--pw-ink)]">{wo.title}</h3>
                         <Badge className={priorityColors[wo.priority]}>{wo.priority}</Badge>
                         <Badge className={statusColors[wo.status]}>{wo.status.replace(/_/g, ' ')}</Badge>
@@ -293,9 +293,11 @@ export default function WorkOrdersPage() {
                               ))}
                               {(!wo.notes || wo.notes.length === 0) && <p className="text-sm text-[var(--pw-slate)]">No notes yet.</p>}
                             </div>
-                            <div className="space-y-2">
+                            <div className="space-y-3">
+                              <div className="space-y-2">
                               <Label>Add Note</Label>
                               <Textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} />
+                              </div>
                               <Button size="sm" onClick={handleAddNote}>Add Note</Button>
                             </div>
                           </DialogContent>
