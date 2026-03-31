@@ -84,8 +84,20 @@ export interface SocialPost {
   approvedAt?: Timestamp;
   rejectedReason?: string;
   publishedAt?: Timestamp;
+  telegramMessageId?: number;
+  manuallyPosted?: boolean;
+  manuallyPostedAt?: Timestamp;
   createdAt: Timestamp;
   updatedAt: Timestamp;
+}
+
+// ─── Telegram Session ──────────────────────────────────────────────
+
+export interface TelegramSession {
+  telegramUserId: number;
+  chatId: number;
+  email: string;
+  registeredAt: Timestamp;
 }
 
 // ─── Campaign ───────────────────────────────────────────────────────

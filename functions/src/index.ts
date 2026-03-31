@@ -65,3 +65,7 @@ export { getSocialPosts, approvePost, rejectPost, deletePost, publishApprovedPos
 export { generateBlogDraft } from './handlers/marketing/generateBlogDraft';
 export { saveBlogDraft, getBlogDrafts, updateBlogDraft, deleteBlogDraft } from './handlers/marketing/blogDrafts';
 export { getMarketingSettings, updateMarketingSettings } from './handlers/marketing/settings';
+
+// Telegram Bot
+export { telegramWebhook } from './handlers/telegram/telegramWebhook';
+export { telegramDailyDigest } from './handlers/telegram/dailyDigest';

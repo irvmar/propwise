@@ -134,6 +134,26 @@ export const processEmailDrips = onSchedule(
         });
       }
     }
+
+    // Check bounce rate and alert if threshold exceeded (fire-and-forget)
+    try {
+      const [bouncedSnap, sentSnap] = await Promise.all([
+        db.collection(COLLECTIONS.emailEvents).where('type', '==', 'bounced').count().get(),
+        db.collection(COLLECTIONS.emailEvents).where('type', '==', 'sent').count().get(),
+      ]);
+      const totalSent = sentSnap.data().count;
+      const totalBounced = bouncedSnap.data().count;
+      const bounceRate = totalSent > 0 ? (totalBounced / totalSent) * 100 : 0;
+      const BOUNCE_THRESHOLD = 5;
+
+      if (bounceRate > BOUNCE_THRESHOLD) {
+        import('../../services/telegram.service')
+          .then(({ notifyBounceAlert }) => notifyBounceAlert(bounceRate, BOUNCE_THRESHOLD))
+          .catch(() => {});
+      }
+    } catch (err) {
+      logger.warn('Bounce rate check failed', { error: err instanceof Error ? err.message : 'Unknown' });
+    }
   },
 );
 

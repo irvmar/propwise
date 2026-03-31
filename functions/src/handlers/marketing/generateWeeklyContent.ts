@@ -99,6 +99,7 @@ async function runWeeklyContentGeneration(): Promise<{ postCount: number; campai
 
   const batch = db.batch();
   let postCount = 0;
+  const postPreviews: Array<{ id: string; platform: string; content: string; hashtags: string[]; imageUrl: string | null; dayOfWeek: string; campaignWeek: string }> = [];
 
   for (const slot of WEEKLY_CALENDAR) {
     for (const platform of slot.platforms) {
@@ -153,6 +154,7 @@ async function runWeeklyContentGeneration(): Promise<{ postCount: number; campai
         }
 
         batch.set(ref, postData);
+        postPreviews.push({ id: ref.id, platform, content, hashtags, imageUrl, dayOfWeek: slot.dayOfWeek, campaignWeek });
 
         postCount++;
       } catch (error) {
@@ -167,6 +169,14 @@ async function runWeeklyContentGeneration(): Promise<{ postCount: number; campai
 
   await batch.commit();
   logger.info('Weekly content generated', { postCount, campaignWeek });
+
+  // Notify via Telegram (fire-and-forget)
+  if (postPreviews.length > 0) {
+    import('../../services/telegram.service')
+      .then(({ notifyNewContent }) => notifyNewContent(postPreviews as Parameters<typeof notifyNewContent>[0]))
+      .catch((err) => logger.warn('Telegram notification failed', { error: err instanceof Error ? err.message : 'Unknown' }));
+  }
+
   return { postCount, campaignWeek, skipped: false };
 }
 

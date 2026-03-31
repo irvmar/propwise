@@ -135,6 +135,23 @@ export const resendWebhook = onRequest(async (req, res) => {
         txn.update(leadRef, updates);
       });
 
+      // Notify on hot lead transition (fire-and-forget, outside transaction)
+      const updatedLeadDoc = await db.collection(COLLECTIONS.leads).doc(leadId).get();
+      const updatedLead = updatedLeadDoc.data();
+      if (updatedLead?.status === 'hot') {
+        import('../../services/telegram.service')
+          .then(({ notifyHotLead }) =>
+            notifyHotLead({
+              name: updatedLead.name || 'Unknown',
+              email: updatedLead.email || '',
+              company: updatedLead.company,
+              score: updatedLead.score || 0,
+              source: updatedLead.source || 'unknown',
+            }),
+          )
+          .catch(() => {}); // Silent — notification is non-critical
+      }
+
       logger.info('Lead updated from webhook', { leadId, eventType: ourType });
     }
 

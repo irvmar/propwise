@@ -226,6 +226,7 @@ export const COLLECTIONS = {
   campaigns: 'campaigns',
   marketingSettings: 'marketingSettings',
   blogDrafts: 'blogDrafts',
+  telegramSessions: 'telegramSessions',
 } as const;
 
 /**

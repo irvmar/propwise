@@ -99,5 +99,8 @@ service cloud.firestore {
     match /marketingSettings/{docId} {
       allow read, write: if false;
     }
+    match /telegramSessions/{docId} {
+      allow read, write: if false;
+    }
   }
 }

@@ -176,5 +176,27 @@ export const publishApprovedPosts = onSchedule(
 
     await batch.commit();
     logger.info('Posts marked as published', { count: postsSnap.size });
+
+    // Send guided publishing messages via Telegram (fire-and-forget)
+    import('../../services/telegram.service')
+      .then(async ({ sendGuidedPublishingMessage }) => {
+        for (const doc of postsSnap.docs) {
+          const post = doc.data();
+          await sendGuidedPublishingMessage({
+            id: doc.id,
+            platform: post.platform,
+            content: post.content,
+            hashtags: post.hashtags || [],
+            imageUrl: post.imageUrl || null,
+          }).catch((err: unknown) =>
+            logger.warn('Telegram guided publishing failed', {
+              postId: doc.id,
+              error: err instanceof Error ? err.message : 'Unknown',
+            }),
+          );
+          await new Promise((r) => setTimeout(r, 300));
+        }
+      })
+      .catch((err) => logger.warn('Telegram service unavailable', { error: err instanceof Error ? err.message : 'Unknown' }));
   },
 );
